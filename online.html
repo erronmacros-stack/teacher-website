@@ -110,7 +110,7 @@ function student(){
   if(m)run(c0.toUpperCase(),localStorage[m]);
 }
 function run(code,tok){
-  let key='',active=true,dl=0,cd,poll,send=null;
+  let key='',active=true,dl=0,cd,poll,send=null,qsync=null;
   const stop=()=>{active=false;clearInterval(poll);clearInterval(cd)};
   document.addEventListener('visibilitychange',()=>{if(active&&document.hidden&&['show','quiz'].includes(key))rpc('ping_leave',{p_token:tok}).catch(()=>{})});
   document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
@@ -158,7 +158,7 @@ function run(code,tok){
     if(s.submitted){const k2='r'+s.phase+(s.review?1:0);
       if(k2!=key){key=k2;result(s);clearInterval(poll);if(s.phase!='done')poll=setInterval(tick,8000)}
       if(s.phase=='done')stop();return}
-    if(s.phase==key)return;key=s.phase;
+    if(s.phase==key){if(key=='quiz'&&qsync&&s.left!=null)qsync(s.left);return}key=s.phase;
     if(key=='wait')view(`<h1>${esc(s.title)}</h1><div class="card"><p>Чекаємо, поки вчитель почне. Не закривайте цю сторінку.</p></div>`);
     else if(key=='show'){
       view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<div class="timer" id="tm"></div><p class="mut" id="cd"></p>':''}${s.audio?'<div class="card" id="au"></div>':`<div class="card read">${esc(s.text).replace(/\n/g,'<br>')}</div>`}`);
@@ -215,7 +215,7 @@ function run(code,tok){
       catch(e){if(e.message=='already'){send=null;key='';return tick()}
         if(force){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}else $('#e').textContent=say(e)}};
     draw();
-    if(qrem!=null){const t0=Date.now()+qrem*1000;cd=setInterval(()=>{qrem=Math.max(0,Math.ceil((t0-Date.now())/1000));clock();if(!qrem){clearInterval(cd);send&&send(true)}},1000)}
+    if(qrem!=null){let t0=Date.now()+qrem*1000;qsync=l=>{t0=Date.now()+l*1000;if(l>qtot)qtot=l};cd=setInterval(()=>{qrem=Math.max(0,Math.ceil((t0-Date.now())/1000));clock();if(!qrem){clearInterval(cd);send&&send(true)}},1000)}
   };
   poll=setInterval(tick,2500);tick();
 }
