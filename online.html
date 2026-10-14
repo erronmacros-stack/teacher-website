@@ -27,6 +27,11 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{text-align:left
 .o{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:6px;cursor:pointer;font-weight:400}
 .o input{width:20px;height:20px;accent-color:var(--g);margin:0}
 .big{font-size:2.4rem;font-weight:700;color:var(--g)}
+.nav{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px}
+.chip{min-width:42px;margin:0;padding:6px 8px}.chip.done{background:var(--g2);border-color:var(--g)}.chip.cur{outline:3px solid var(--g);outline-offset:1px}
+dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:420px;padding:18px}
+dialog::backdrop{background:rgba(0,0,0,.45)}
+@media print{button,.nav{display:none}body{background:#fff;color:#000}}
 </style>
 </head>
 <body>
@@ -54,7 +59,7 @@ function student(){
   <label>Ваше ім'я<input type="text" id="n" maxlength="40" autocomplete="off"></label><button class="pri" id="j">Приєднатися</button><p class="err" id="e"></p></div>`);
   $('#j').onclick=async()=>{const c=$('#c').value.trim().toUpperCase();
     if(localStorage['rt-'+c])return run(c,localStorage['rt-'+c]);
-    try{const tk=await rpc('join_session',{p_code:c,p_name:$('#n').value});localStorage['rt-'+c]=tk;run(c,tk)}catch(e){$('#e').textContent=say(e)}};
+    try{const tk=await rpc('join_session',{p_code:c,p_name:$('#n').value});localStorage['rt-'+c]=tk;localStorage['rn-'+c]=$('#n').value.trim();run(c,tk)}catch(e){$('#e').textContent=say(e)}};
   const m=Object.keys(localStorage).find(k=>k.startsWith('rt-')&&k.slice(3)==c0.toUpperCase());
   if(m)run(c0.toUpperCase(),localStorage[m]);
 }
@@ -63,10 +68,15 @@ function run(code,tok){
   const stop=()=>{active=false;clearInterval(poll);clearInterval(cd)};
   document.addEventListener('visibilitychange',()=>{if(active&&document.hidden&&['show','quiz'].includes(key))rpc('ping_leave',{p_token:tok}).catch(()=>{})});
   document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
+  function result(s){
+    const nm=localStorage['rn-'+code]||'';
+    view(`<h1>${esc(s.title)}</h1><div class="card"><p class="mut">${esc(nm)}${nm?', ':''}${new Date().toLocaleDateString('uk-UA')}</p><p>Ваш результат:</p><div class="big">${s.score} з ${s.total}</div><p>Оцінка: <b>${Math.max(1,Math.round(12*s.score/s.total))}</b> з 12</p></div>
+    <button class="pri" id="pr">Зберегти або роздрукувати</button><p class="mut">У вікні друку можна обрати «Зберегти як PDF».</p>`);
+    $('#pr').onclick=()=>print()}
   const tick=async()=>{
     let s;try{s=await rpc('get_state',{p_code:code,p_token:tok})}catch{return}
     if(s.err){stop();delete localStorage['rt-'+code];return student()}
-    if(s.submitted){stop();return view(`<h1>${esc(s.title)}</h1><div class="card"><p>Відповіді надіслано. Ваш результат:</p><div class="big">${s.score} з ${s.total}</div><p>Оцінка: ${Math.max(1,Math.round(12*s.score/s.total))} з 12</p></div>`)}
+    if(s.submitted){stop();return result(s)}
     if(s.phase==key)return;key=s.phase;
     if(key=='wait')view(`<h1>${esc(s.title)}</h1><div class="card"><p>Чекаємо, поки вчитель почне. Не закривайте цю сторінку.</p></div>`);
     else if(key=='show'){
@@ -78,15 +88,31 @@ function run(code,tok){
     else if(key=='done'){if(send){const f=send;key='';await f(true);return}stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
   };
   const quiz=s=>{
-    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))})));
-    view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<p class="mut" id="qc"></p>':''}${Q.map((x,k)=>`<div class="card q"><h2>${k+1}. ${esc(x.q)}</h2>${x.o.map(o=>`<label class="o"><input type="radio" name="q${x.i}" value="${o.j}">${esc(o.t)}</label>`).join('')}</div>`).join('')}
-    <button class="pri" id="s">Надіслати відповіді</button><p class="err" id="e"></p>`);
+    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))}))),A={};let k=0,qtxt='';
+    const skipped=()=>Q.map((x,n)=>A[x.i]==null?n+1:0).filter(Boolean);
+    const draw=()=>{const x=Q[k];
+      view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<p class="mut" id="qc"></p>':''}
+      <div class="nav">${Q.map((y,n)=>`<button class="chip${A[y.i]!=null?' done':''}${n==k?' cur':''}" data-n="${n}" aria-label="Питання ${n+1}">${n+1}</button>`).join('')}</div>
+      <div class="card q"><h2>${k+1}. ${esc(x.q)}</h2>${x.o.map(o=>`<label class="o"><input type="radio" name="q" value="${o.j}" ${A[x.i]===o.j?'checked':''}>${esc(o.t)}</label>`).join('')}</div>
+      <div class="row">${k?'<button id="pv">Назад</button>':'<span></span>'}${k<Q.length-1?'<button class="pri" id="nx">Далі</button>':''}</div>
+      <p style="margin-top:16px"><button class="pri" id="fin">Завершити тест</button></p><p class="err" id="e"></p>
+      <dialog id="dg"><p id="dm"></p><button id="no">Повернутися</button><button class="pri" id="yes">Так, завершити</button></dialog>`);
+      if($('#qc'))$('#qc').textContent=qtxt;
+      document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{k=+b.dataset.n;draw()});
+      document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{A[x.i]=+i.value;document.querySelector('.chip.cur').classList.add('done')});
+      if($('#pv'))$('#pv').onclick=()=>{k--;draw()};if($('#nx'))$('#nx').onclick=()=>{k++;draw()};
+      $('#fin').onclick=()=>{const sk=skipped();
+        $('#dm').textContent=sk.length?`Ви не відповіли на питання: ${sk.join(', ')}. Завершити тест без них? Після цього змінити відповіді буде неможливо.`:'Ви впевнені, що хочете завершити тест? Після цього змінити відповіді буде неможливо.';
+        $('#dg').showModal()};
+      $('#no').onclick=()=>$('#dg').close();$('#yes').onclick=()=>{$('#dg').close();send&&send()};
+    };
     send=async force=>{
-      const ans=s.qs.map((_,i)=>{const r=document.querySelector(`input[name=q${i}]:checked`);return r?+r.value:null});
-      if(!force&&ans.includes(null)&&!confirm('Не на всі питання є відповідь. Надіслати все одно?'))return;
-      try{await rpc('submit',{p_code:code,p_token:tok,p_ans:ans});send=null;key='';tick()}catch(e){if(e.message=='already'){send=null;key='';return tick()}if(force){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}else $('#e').textContent=say(e)}};
-    $('#s').onclick=()=>send&&send();
-    if(s.left!=null){const t0=Date.now()+s.left*1000;cd=setInterval(()=>{const r=Math.max(0,Math.ceil((t0-Date.now())/1000));$('#qc').textContent='Залишилось на відповіді: '+r+' с';if(!r){clearInterval(cd);send&&send(true)}},1000)}
+      const ans=s.qs.map((_,i)=>A[i]??null);
+      try{await rpc('submit',{p_code:code,p_token:tok,p_ans:ans});send=null;key='';tick()}
+      catch(e){if(e.message=='already'){send=null;key='';return tick()}
+        if(force){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}else $('#e').textContent=say(e)}};
+    draw();
+    if(s.left!=null){const t0=Date.now()+s.left*1000;cd=setInterval(()=>{const r=Math.max(0,Math.ceil((t0-Date.now())/1000));qtxt='Залишилось на відповіді: '+r+' с';if($('#qc'))$('#qc').textContent=qtxt;if(!r){clearInterval(cd);send&&send(true)}},1000)}
   };
   poll=setInterval(tick,2500);tick();
 }
