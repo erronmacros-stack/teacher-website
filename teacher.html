@@ -5,26 +5,52 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Панель вчителя</title>
 <style>
-:root{--bg:#eef2f0;--ink:#16231e;--g:#0f6b52;--g2:#d8e9e2;--mut:#5b6b64;--line:#c5d3cc;--bad:#b3392f;--card:#fff}
-@media(prefers-color-scheme:dark){:root{--bg:#121a17;--ink:#e6efeb;--g:#3fb18f;--g2:#1d2e28;--mut:#9fb2aa;--line:#2f433b;--card:#18231f}}
+:root{--bg:#f3f6f4;--ink:#16231e;--g:#0f6b52;--g2:#e1efe9;--mut:#5f6f68;--line:#dbe4df;--bad:#b3392f;--card:#fff;--side:#fff;--blue:#2563a8}
+@media(prefers-color-scheme:dark){:root{--bg:#101815;--ink:#e6efeb;--g:#3fb18f;--g2:#1d2e28;--mut:#9fb2aa;--line:#2b3d36;--card:#17221e;--side:#141e1a;--blue:#7fb2e8}}
 *{box-sizing:border-box}
-body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
-#app{max-width:820px;margin:0 auto;padding:24px 16px 48px}
-h1{font-size:1.5rem;margin:0}h2{font-size:1.1rem;margin:16px 0 8px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:14px;margin-bottom:12px}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+.shell{display:grid;grid-template-columns:230px 1fr;min-height:100vh}
+.side{background:var(--side);border-right:1px solid var(--line);padding:18px 12px;position:sticky;top:0;height:100vh;display:flex;flex-direction:column}
+.brand{display:flex;gap:8px;align-items:center;font-weight:700;font-size:1.1rem;color:var(--g);padding:2px 10px}
+.brand+small{display:block;padding:0 10px 18px;color:var(--mut)}
+.nv{display:flex;gap:10px;align-items:center;width:100%;text-align:left;border:0;background:none;padding:10px 12px;border-radius:10px;font:inherit;font-weight:600;color:var(--ink);cursor:pointer;margin:0 0 4px}
+.nv:hover{background:var(--g2)}.nv.on{background:var(--g2);color:var(--g)}
+.main{padding:24px 28px 56px;max-width:1120px;width:100%}
+.top{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;flex-wrap:wrap;margin-bottom:18px}
+h1{font-size:1.65rem;margin:0}h2{font-size:1.1rem;margin:16px 0 8px}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:12px;margin-bottom:20px}
+.stat{display:flex;gap:12px;align-items:center;margin:0}
+.ico{width:44px;height:44px;border-radius:12px;background:var(--g2);color:var(--g);display:grid;place-items:center;flex:none}
+.stat b,.num{font-size:1.7rem;line-height:1.15;display:block}.num{display:inline}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px 16px;margin-bottom:12px}
+.srow{display:grid;grid-template-columns:44px 1fr auto 80px 120px;gap:14px;align-items:center;padding:12px 4px;border-top:1px solid var(--line);cursor:pointer}
+.srow:first-child,.trow:first-child{border-top:0}.srow:hover b{color:var(--g)}
+.trow{display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:12px 4px;border-top:1px solid var(--line)}
+.trow>div:nth-child(2){flex:1;min-width:170px}.acts{display:flex;flex-wrap:wrap}
+.chip{display:inline-block;padding:2px 11px;border-radius:999px;font-size:.8rem;font-weight:600;background:var(--g2);color:var(--g);white-space:nowrap}
+.chip.w{background:var(--line);color:var(--mut)}.chip.s{color:var(--blue)}
+.pb,.bar{height:7px;border-radius:4px;background:var(--line);margin:3px 0 6px}.pb i,.bar i{display:block;height:100%;border-radius:4px;background:var(--g)}
+.tabs{display:flex;gap:20px;border-bottom:1px solid var(--line);margin-bottom:14px;overflow-x:auto}
+.tab{background:none;border:0;border-bottom:3px solid transparent;border-radius:0;padding:8px 2px;margin:0 0 -1px;font:inherit;font-weight:600;color:var(--mut);cursor:pointer;white-space:nowrap}
+.tab.on{color:var(--g);border-color:var(--g)}
+.lnk{background:none;border:0;padding:0;margin:0 0 10px;color:var(--g);font:inherit;font-weight:600;cursor:pointer}
 label{display:block;font-weight:600;font-size:.9rem;margin-bottom:10px}
 select,input[type=text],input[type=email],input[type=password],input[type=number],textarea{display:block;width:100%;margin-top:4px;padding:8px 10px;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px}
-button,.btn{font:inherit;font-weight:600;padding:7px 13px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;margin:0 6px 6px 0;display:inline-block}
-button:focus-visible,input:focus-visible,textarea:focus-visible,summary:focus-visible{outline:3px solid var(--g);outline-offset:1px}
+button,.btn{font:inherit;font-weight:600;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;margin:0 6px 6px 0;display:inline-block}
+button:hover{border-color:var(--g)}
+button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,[role=button]:focus-visible{outline:3px solid var(--g);outline-offset:1px}
 .pri{background:var(--g);border-color:var(--g);color:#fff}.danger{color:var(--bad)}
-.err{color:var(--bad)}.mut{color:var(--mut)}.sm{font-size:.9rem}
-.code{font:700 1.9rem/1 ui-monospace,Consolas,monospace;letter-spacing:.15em}
-table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{text-align:left;padding:5px 8px;border-top:1px solid var(--line)}
+.err{color:var(--bad)}.mut{color:var(--mut)}.sm{font-size:.88rem}
+.code{font:700 1.9rem/1.1 ui-monospace,Consolas,monospace;letter-spacing:.15em}
+table{width:100%;border-collapse:collapse}td,th{text-align:left;padding:8px;border-top:1px solid var(--line)}th{border-top:0;color:var(--mut);font-size:.85rem}
 .row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
 .two{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:0 14px}
 .opt{display:flex;gap:8px;align-items:center;margin-top:6px}.opt input[type=radio]{width:20px;height:20px;margin:0;accent-color:var(--g)}
 details{margin-top:8px}summary{cursor:pointer;font-weight:600}
-.bar{height:8px;background:var(--g2);border-radius:4px;margin:2px 0 8px}.bar i{display:block;height:100%;background:var(--g);border-radius:4px}
+@media(max-width:820px){
+ .shell{grid-template-columns:1fr}.side{position:static;height:auto;flex-direction:row;align-items:center;gap:4px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line);padding:8px}
+ .brand,.brand+small{display:none}.nv{width:auto;white-space:nowrap;margin:0}.side>div[style]{display:none}
+ .main{padding:16px 14px 40px}.srow{grid-template-columns:44px 1fr auto}.hm{display:none}}
 </style>
 </head>
 <body>
@@ -33,26 +59,32 @@ details{margin-top:8px}summary{cursor:pointer;font-weight:600}
 const URL_='https://nyilajegoqdhujnvhsoe.supabase.co',KEY_='sb_publishable_HgNdf6MvwSLU4_7r5a-vrA_KKUvR9aw';
 const $=s=>document.querySelector(s),view=h=>$('#app').innerHTML=h;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
-let TOK=sessionStorage.tk||null,E=null,timer,T=[],S=[];const X=new Set();
+let TOK=sessionStorage.tk||null,E=null,timer,T=[],S=[],V='home',PREV='home',SEL=null,TAB='res';const X=new Set();
 async function api(path,{method='GET',body,prefer}={}){
   const h={apikey:KEY_,'Content-Type':'application/json'};if(TOK)h.Authorization='Bearer '+TOK;if(prefer)h.Prefer=prefer;
   const r=await fetch(URL_+path,{method,headers:h,body:body&&JSON.stringify(body)});
   const t=await r.text();let d;try{d=JSON.parse(t)}catch{d=t}
   if(!r.ok){if(r.status==401&&TOK){delete sessionStorage.tk;TOK=null}throw new Error((d&&(d.message||d.msg||d.error_description))||r.status)}
   return d}
-const ST={wait:'очікування',show:'показ матеріалу',quiz:'тест',done:'завершено'};
+const ST={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',done:'Завершено'};
 const defScale=()=>Array.from({length:12},(_,i)=>+(((i+.5)/12*100).toFixed(1)));
 const grade=(s,t,sc)=>{const p=s*100/t;if(!Array.isArray(sc))return Math.max(1,Math.round(p*12/100));let g=1;sc.forEach((m,i)=>{if(p>=m)g=i+1});return g};
 const genCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b%32]).join('');
 const blank=()=>({q:'',o:['','','',''],c:0});
 
+const IC={home:'M3 11l9-8 9 8v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z',doc:'M6 3h9l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6',list:'M9 4h6v3H9z M7 5H5v16h14V5h-2 M9 14l2 2 4-4',users:'M16 20v-1a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v1 M10 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6 M20 20v-1a3 3 0 0 0-2-2.8 M16 5.2a3 3 0 0 1 0 5.6',chart:'M5 20V10 M12 20V4 M19 20v-7',ok:'M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20 M8 12l3 3 5-6',book:'M4 5a2 2 0 0 1 2-2h6v17H6a2 2 0 0 0-2 2z M20 5a2 2 0 0 0-2-2h-6v17h6a2 2 0 0 1 2 2z',audio:'M4 10v4 M8 7v10 M12 4v16 M16 8v8 M20 11v2'};
+const ic=n=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${IC[n]}"/></svg>`;
+const fmt=d=>d?new Date(d).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 function teacher(){
   E=null;
-  if(!TOK){view(`<h1>Вхід для вчителя</h1><div class="card"><label>Пошта<input type="email" id="m"></label><label>Пароль<input type="password" id="p"></label>
-    <button class="pri" id="l">Увійти</button><p class="err" id="e"></p></div>`);
+  if(!TOK){view(`<div style="max-width:420px;margin:10vh auto;padding:0 16px"><h1>Вхід для вчителя</h1><div class="card" style="margin-top:14px"><label>Пошта<input type="email" id="m"></label><label>Пароль<input type="password" id="p"></label>
+    <button class="pri" id="l">Увійти</button><p class="err" id="e"></p></div></div>`);
     $('#l').onclick=async()=>{try{const d=await api('/auth/v1/token?grant_type=password',{method:'POST',body:{email:$('#m').value.trim(),password:$('#p').value}});
       TOK=sessionStorage.tk=d.access_token;teacher()}catch(e){$('#e').textContent='Не вдалося увійти: '+e.message}};return}
-  view(`<div class="row"><h1>Панель вчителя</h1><button id="out">Вийти</button></div><div id="L"></div>`);
+  view(`<div class="shell"><nav class="side"><div class="brand">${ic('book')}Читання й тест</div><small>Українська мова та література</small>
+    ${[['home','Огляд','home'],['tests','Тести','doc'],['sessions','Заняття','list']].map(([k,t,i])=>`<button class="nv" data-a="nav" data-v="${k}">${ic(i)}${t}</button>`).join('')}
+    <div style="flex:1"></div><button class="nv" id="out">Вийти</button></nav><main class="main" id="M"><p class="mut">Завантаження…</p></main></div>
+    <input type="file" id="f" accept=".json" hidden>`);
   $('#out').onclick=()=>{delete sessionStorage.tk;location.reload()};
   load();clearInterval(timer);timer=setInterval(()=>{if(TOK&&!E&&!document.hidden)load()},4000);
 }
@@ -72,33 +104,65 @@ async function saveTest(o,id){
   else{const r=await api('/rest/v1/tests',{method:'POST',body,prefer:'return=representation'});id=r[0].id}
   if(audio&&audio!=='keep')await api('/rest/v1/audio_files?on_conflict=test_id',{method:'POST',body:{test_id:id,mime:audio.mime,data:audio.data},prefer:'resolution=merge-duplicates,return=minimal'})}
 
-/* ---------- головна ---------- */
+/* ---------- екрани ---------- */
 async function load(){
   try{
     [T,S]=await Promise.all([api('/rest/v1/tests?select=id,title,data&order=created_at.desc'),
-      api('/rest/v1/sessions?select=id,code,status,late_ok,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);
-    if(E)return;
-    const base=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html';
-    const det=(k,d,t,b)=>`<details data-k="${k}" data-d="${d}" ${(X.has(k)?!d:d)?'open':''}><summary>${t}</summary>${b}</details>`;
-    $('#L').innerHTML=`<div class="row"><h2>Тести</h2><span><button class="pri" data-a="edit" data-id="">Новий тест</button><label class="btn" style="margin:0 0 6px">Імпорт .json<input type="file" id="f" accept=".json" hidden></label></span></div>
-    ${T.map(t=>`<div class="card row"><b>${esc(t.title)}</b><span><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><button data-a="edit" data-id="${t.id}">Редагувати</button><button data-a="exp" data-id="${t.id}">Зберегти у файл</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></span></div>`).join('')||'<p class="mut">Ще немає тестів. Створіть перший.</p>'}
-    <h2>Заняття</h2>${S.map(s=>{
-      const A=s.attempts,D=A.filter(a=>a.finished_at),sc=s.tests?.data?.scale,qs=s.tests?.data?.qs||[],avg=D.length?(D.reduce((x,a)=>x+grade(a.score,a.total,sc),0)/D.length).toFixed(1):'—';
-      return`<div class="card"><div class="row"><div><div class="code">${s.code}</div><span class="mut">${esc(s.tests?.title||'')}: ${ST[s.status]}</span></div>
-      <div>${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}</div></div>
-      <p class="mut sm">Посилання: ${base}?c=${s.code}<br>Приєднання після старту: <b>${s.late_ok?'дозволено':'закрито'}</b> <button data-a="late" data-id="${s.id}" data-v="${s.late_ok}">${s.late_ok?'Закрити':'Дозволити'}</button></p>
-      ${det('r'+s.id,true,`Результати (здали ${D.length} з ${A.length}, середня оцінка ${avg})`,`<table><tr><th>Учень</th><th>Бал</th><th>Оцінка</th><th>Виходи</th><th></th></tr>${A.map(a=>`<tr><td>${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td>${a.finished_at?grade(a.score,a.total,sc):'—'}</td><td>${a.leaves}</td><td><button class="danger" data-a="da" data-id="${a.id}">Скинути</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Ніхто ще не приєднався.</td></tr>'}</table>`)}
-      ${D.length?det('a'+s.id,false,'Розбір',analysis(qs,D)):''}
-      <p style="margin-top:10px"><button data-a="csv" data-id="${s.id}">Завантажити таблицю</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`}).join('')||'<p class="mut">Ще немає занять.</p>'}`;
-  }catch(e){if(!TOK)teacher();else if($('#L'))$('#L').innerHTML='<p class="err">Помилка: '+esc(e.message)+'</p>'}
+      api('/rest/v1/sessions?select=id,code,status,late_ok,created_at,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);
+    render();
+  }catch(e){if(!TOK)teacher();else if($('#M'))$('#M').innerHTML='<p class="err">Помилка: '+esc(e.message)+'</p>'}
 }
+function render(){
+  if(E||!$('#M'))return;
+  const cur=V=='detail'?PREV:V;
+  document.querySelectorAll('.nv[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v==cur));
+  $('#M').innerHTML=V=='tests'?testsV():V=='sessions'?sessionsV():V=='detail'?detail():home();
+}
+function info(s){const A=s.attempts,D=A.filter(a=>a.finished_at),d=s.tests?.data||{},sc=d.scale,qs=d.qs||[];
+  return{A,D,d,qs,sc,avg:D.length?D.reduce((x,a)=>x+grade(a.score,a.total,sc),0)/D.length:null,
+    pct:D.length?Math.round(D.reduce((x,a)=>x+a.score/a.total,0)/D.length*100):null}}
+const chip=s=>`<span class="chip ${s.status=='wait'?'w':s.status=='show'?'s':''}">${ST[s.status]}</span>`;
+const hdr=(t,sub)=>`<div class="top"><div><h1>${t}</h1><p class="mut" style="margin:4px 0 0">${sub}</p></div><div><button class="pri" data-a="edit" data-id="">Створити тест</button><button data-a="imp">Імпорт JSON</button></div></div>`;
+const srow=s=>{const i=info(s);return`<div class="srow" role="button" tabindex="0" data-a="open" data-id="${s.id}"><span class="ico">${ic(i.d.type=='audio'?'audio':'book')}</span>
+  <div><b>${esc(s.tests?.title||'Без назви')}</b><div class="mut sm">${i.A.length} учн., ${i.qs.length} запитань, ${fmt(s.created_at)}</div></div>${chip(s)}
+  <span class="hm"><b>${i.avg==null?'—':i.avg.toFixed(1)}</b> <span class="mut sm">/ 12</span></span>
+  <span class="hm"><span class="mut sm">${i.pct==null?'—':i.pct+'%'}</span><div class="pb"><i style="width:${i.pct||0}%"></i></div></span></div>`};
+const empty='<p class="mut" style="padding:8px 4px">Занять ще немає. Створіть тест і запустіть із нього перше заняття.</p>';
+function home(){
+  const grades=S.flatMap(s=>{const i=info(s);return i.D.map(a=>grade(a.score,a.total,i.sc))}),
+    avg=grades.length?(grades.reduce((x,y)=>x+y,0)/grades.length).toFixed(1):'—',
+    act=S.filter(s=>s.status!='done').reduce((n,s)=>n+s.attempts.length,0),fin=S.filter(s=>s.status=='done').length;
+  const st=(i,n,l,sub,go)=>`<div class="card stat"><span class="ico">${ic(i)}</span><div><span class="mut sm">${l}</span><b>${n}</b>${go?`<button class="lnk" style="margin:0" data-a="nav" data-v="${go}">${sub} →</button>`:`<span class="mut sm">${sub}</span>`}</div></div>`;
+  return hdr('Вітаємо!','Тут ви можете керувати тестами, проводити заняття та відстежувати результати учнів.')+
+   `<div class="stats">${st('doc',T.length,'Усього тестів','Переглянути всі','tests')}${st('users',act,'Учні в активних заняттях','Переглянути заняття','sessions')}${st('chart',avg,'Середня оцінка (з 12)','за всіма завершеними тестами')}${st('ok',fin,'Завершених занять','з усіх '+S.length)}</div>
+   <div class="row"><h2 style="margin:0">Останні заняття</h2><button class="lnk" style="margin:0" data-a="nav" data-v="sessions">Усі заняття →</button></div>
+   <div class="card" style="margin-top:8px">${S.slice(0,4).map(srow).join('')||empty}</div>`}
+const sessionsV=()=>hdr('Заняття','Усі запуски тестів. Оберіть заняття, щоб побачити результати.')+`<div class="card">${S.map(srow).join('')||empty}</div>`;
+const testsV=()=>hdr('Тести','Створюйте тести, редагуйте їх і зберігайте у файл.')+`<div class="card">${T.map(t=>{const d=t.data;return`<div class="trow"><span class="ico">${ic(d.type=='audio'?'audio':'doc')}</span><div><b>${esc(t.title)}</b><div class="mut sm">${d.type=='audio'?'Аудіо':'Текст'}, ${d.qs.length} запитань</div></div>
+  <div class="acts"><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><button data-a="edit" data-id="${t.id}">Редагувати</button><button data-a="exp" data-id="${t.id}">Зберегти у файл</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></div></div>`}).join('')||'<p class="mut" style="padding:8px 4px">Ще немає тестів. Створіть перший або імпортуйте файл.</p>'}</div>`;
+function detail(){
+  const s=S.find(x=>x.id==SEL);if(!s)return'<p class="mut">Завантаження…</p>';
+  const i=info(s),A=i.A,link=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html?c='+s.code;
+  const mini=(l,v,u)=>`<div class="card"><span class="mut sm">${l}</span><div><span class="num">${v}</span> <span class="mut">${u||''}</span></div></div>`;
+  let body;
+  if(TAB=='res')body=`<div class="card" style="overflow-x:auto"><table><tr><th>Учень</th><th>Бал</th><th>Оцінка</th><th>Виходи з вкладки</th><th></th></tr>${A.map(a=>`<tr><td>${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td>${a.finished_at?grade(a.score,a.total,i.sc):'—'}</td><td>${a.leaves}</td><td><button class="danger" data-a="da" data-id="${a.id}">Скинути</button></td></tr>`).join('')||'<tr><td colspan="5" class="mut">Ніхто ще не приєднався.</td></tr>'}</table></div>`;
+  else if(TAB=='an')body=i.D.length?`<div class="card">${analysis(i.qs,i.D)}</div>`:'<div class="card"><p class="mut">Розбір з’явиться, щойно хтось здасть тест.</p></div>';
+  else body=`<div class="card"><span class="mut sm">Код заняття</span><div class="code">${s.code}</div>
+    <p class="mut sm" style="word-break:break-all">Посилання для учнів: ${link}</p><button data-a="copy" data-v="${link}">Копіювати посилання</button>
+    <p style="margin-top:12px">${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}</p>
+    <p class="mut sm">Приєднання після старту: <b>${s.late_ok?'дозволено':'закрито'}</b> <button data-a="late" data-id="${s.id}" data-v="${s.late_ok}">${s.late_ok?'Закрити':'Дозволити'}</button></p>
+    <p><button data-a="csv" data-id="${s.id}">Завантажити таблицю</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`;
+  return`<button class="lnk" data-a="nav" data-v="${PREV}">← Назад</button>
+   <div class="top"><div><span class="mut sm">Заняття</span><h1>${esc(s.tests?.title||'Без назви')}</h1><p class="mut" style="margin:4px 0 0">${A.length} учн., ${i.qs.length} запитань, ${fmt(s.created_at)}</p></div>${chip(s)}</div>
+   <div class="stats">${mini('Середня оцінка',i.avg==null?'—':i.avg.toFixed(1),'/ 12')}${mini('Правильних відповідей',i.pct==null?'—':i.pct+'%')}${mini('Здали',i.D.length,'з '+A.length)}</div>
+   <div class="tabs">${[['res','Результати'],['an','Розбір питань'],['ctl','Керування']].map(([k,t])=>`<button class="tab ${TAB==k?'on':''}" data-a="tab" data-v="${k}">${t}</button>`).join('')}</div>${body}`}
 function analysis(qs,D){
   const byQ=qs.map((q,i)=>{const k=D.filter(a=>a.answers?.[i]===q.c).length,p=Math.round(k/D.length*100);
     const w={};D.forEach(a=>{const v=a.answers?.[i];if(v!=null&&v!==q.c)w[v]=(w[v]||0)+1});
     const top=Object.entries(w).sort((x,y)=>y[1]-x[1])[0];
     return`<div><b>${i+1}. ${esc(q.q)}</b> <span class="mut">${k} з ${D.length} (${p}%)</span><div class="bar"><i style="width:${p}%"></i></div>${top?`<span class="mut sm">Найчастіша помилка: «${esc(q.o[top[0]])}» (${top[1]})</span>`:''}</div>`}).join('');
   const bySt=D.map(a=>{const w=qs.map((q,i)=>{const v=a.answers?.[i];return v===q.c?'':`<li>${i+1}. обрано «${v==null?'—':esc(q.o[v])}», правильно «${esc(q.o[q.c])}»</li>`}).join('');
-    return`<details><summary>${esc(a.name)}: ${a.score} з ${a.total}</summary>${w?`<ul>${w}</ul>`:'<p class="mut">Без помилок.</p>'}</details>`}).join('');
+    return`<details data-k="s${a.id}" data-d="false" ${X.has('s'+a.id)?'open':''}><summary>${esc(a.name)}: ${a.score} з ${a.total}</summary>${w?`<ul>${w}</ul>`:'<p class="mut">Без помилок.</p>'}</details>`}).join('');
   return`<h2>За питаннями</h2>${byQ}<h2>За учнями</h2>${bySt}`}
 document.addEventListener('toggle',e=>{const d=e.target;if(d.dataset&&d.dataset.k){const def=d.dataset.d=='true';d.open!==def?X.add(d.dataset.k):X.delete(d.dataset.k)}},true);
 document.addEventListener('change',async e=>{const t=e.target;
@@ -142,14 +206,19 @@ document.addEventListener('input',e=>{if(!E)return;const t=e.target,d=t.dataset;
 
 /* ---------- дії ---------- */
 document.addEventListener('click',async e=>{
-  const b=e.target.closest('button[data-a]');if(!b)return;const{a,id,v,i}=b.dataset,now=new Date().toISOString();
+  const b=e.target.closest('[data-a]');if(!b)return;const{a,id,v,i}=b.dataset,now=new Date().toISOString();
   try{
+    if(a=='nav'){V=v;render();return}
+    if(a=='tab'){TAB=v;render();return}
+    if(a=='open'){if(V!='detail')PREV=V;SEL=id;TAB='res';V='detail';render();window.scrollTo(0,0);return}
+    if(a=='imp'){$('#f').click();return}
+    if(a=='copy'){await navigator.clipboard.writeText(v);b.textContent='Скопійовано';return}
     if(a=='edit')return edit(id);
     if(a=='addq'){E.qs.push(blank());return draw()}
     if(a=='delq'){E.qs.splice(i,1);return draw()}
     if(a=='back')return teacher();
     if(a=='save'){await saveTest(clean(E),E.id);return teacher()}
-    if(a=='new'){for(let k=0;k<5;k++){try{await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=minimal'});break}catch(x){if(k==4)throw x}}}
+    if(a=='new'){let sid;for(let k=0;k<5;k++){try{const r=await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=representation'});sid=r[0].id;break}catch(x){if(k==4)throw x}}PREV='sessions';SEL=sid;TAB='ctl';V='detail'}
     else if(a=='st')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:v=='show'?{status:v,started_at:now}:v=='quiz'?{status:v,quiz_at:now}:{status:v,ended_at:now}});
     else if(a=='exp'){const t=T.find(x=>x.id==id),l=document.createElement('a'),ex={title:t.title,...t.data};
       if(t.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');ex.audio=f[0]}
@@ -157,7 +226,7 @@ document.addEventListener('click',async e=>{
       l.download=t.title.replace(/[^\p{L}\p{N}]+/gu,'_')+'.json';l.click()}
     else if(a=='late')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{late_ok:v!='true'}});
     else if(a=='dt'){if(!confirm('Видалити тест разом з усіма його заняттями та результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/tests?id=eq.'+id,{method:'DELETE'})}
-    else if(a=='ds'){if(!confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'})}
+    else if(a=='ds'){if(!confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'});V=PREV;SEL=null}
     else if(a=='da'){if(!confirm('Скинути спробу? Учень зможе пройти тест заново (за умови, що приєднання дозволене).'))return;await api('/rest/v1/attempts?id=eq.'+id,{method:'DELETE'})}
     else if(a=='csv'){const s=S.find(x=>x.id==id),q=x=>'"'+String(x).replace(/"/g,'""')+'"';
       const rows=[['Учень','Бал','З','Оцінка (12)','Виходи з вкладки'],...s.attempts.map(t=>[t.name,t.finished_at?t.score:'',t.finished_at?t.total:'',t.finished_at?grade(t.score,t.total,s.tests?.data?.scale):'',t.leaves])];
@@ -165,6 +234,7 @@ document.addEventListener('click',async e=>{
     load();
   }catch(x){alert(x.message)}
 });
+document.addEventListener('keydown',e=>{if((e.key=='Enter'||e.key==' ')&&e.target.matches&&e.target.matches('[role=button]')){e.preventDefault();e.target.click()}});
 teacher();
 </script>
 </body>
