@@ -151,11 +151,11 @@ function detail(){
     <p class="mut sm" style="word-break:break-all">Посилання для учнів: ${link}</p><button data-a="copy" data-v="${link}">Копіювати посилання</button>
     <p style="margin-top:12px">${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}</p>
     <p class="mut sm">Приєднання після старту: <b>${s.late_ok?'дозволено':'закрито'}</b> <button data-a="late" data-id="${s.id}" data-v="${s.late_ok}">${s.late_ok?'Закрити':'Дозволити'}</button></p>
-    <p class="mut sm">Показувати учням правильні відповіді після завершення заняття: <b>${s.reveal?'так':'ні'}</b> <button data-a="rev" data-id="${s.id}" data-v="${s.reveal}">${s.reveal?'Вимкнути':'Увімкнути'}</button></p>
     <p><button data-a="csv" data-id="${s.id}">Завантажити таблицю</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`;
   return`<button class="lnk" data-a="nav" data-v="${PREV}">← Назад</button>
    <div class="top"><div><span class="mut sm">Заняття</span><h1>${esc(s.tests?.title||'Без назви')}</h1><p class="mut" style="margin:4px 0 0">${A.length} учн., ${i.qs.length} запитань, ${fmt(s.created_at)}</p></div>${chip(s)}</div>
    <div class="stats">${mini('Середня оцінка',i.avg==null?'—':i.avg.toFixed(1),'/ 12')}${mini('Правильних відповідей',i.pct==null?'—':i.pct+'%')}${mini('Здали',i.D.length,'з '+A.length)}</div>
+   <div class="card row"><span class="sm"><b>Показ правильних відповідей учням: ${s.reveal?'увімкнено':'вимкнено'}</b><br><span class="mut">Діє після завершення заняття: тоді учні побачать розбір у своєму звіті.</span></span><button class="${s.reveal?'':'pri'}" data-a="rev" data-id="${s.id}" data-v="${s.reveal}">${s.reveal?'Вимкнути':'Увімкнути'}</button></div>
    <div class="tabs">${[['res','Результати'],['an','Розбір питань'],['ctl','Керування']].map(([k,t])=>`<button class="tab ${TAB==k?'on':''}" data-a="tab" data-v="${k}">${t}</button>`).join('')}</div>${body}`}
 function analysis(qs,D){
   const byQ=qs.map((q,i)=>{const k=D.filter(a=>a.answers?.[i]===q.c).length,p=Math.round(k/D.length*100);
