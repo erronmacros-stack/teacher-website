@@ -49,7 +49,7 @@ async function api(path,{method='GET',body,prefer}={}){
   if(!r.ok){if(r.status==401&&TOK){delete sessionStorage.tk;TOK=null}throw new Error((d&&(d.message||d.msg||d.error_description))||r.status)}
   return d}
 const rpc=(n,b)=>api('/rest/v1/rpc/'+n,{method:'POST',body:b});
-const MSG={no_session:'Заняття з таким кодом не знайдено або воно вже завершене.',name_taken:'Це ім\'я вже використано в цьому занятті. Якщо це ви, зверніться до вчителя.',bad_name:'Введіть ім\'я (до 40 символів).',closed:'Час на відповіді закінчився.',already:'Ви вже надіслали відповіді.',started:'Тест уже розпочався, приєднатися не можна. Зверніться до вчителя.'};
+const MSG={no_session:'Заняття з таким кодом не знайдено або воно вже завершене.',name_taken:'Це ім\'я вже використано в цьому занятті. Якщо це ви, зверніться до вчителя.',bad_name:'Введіть ім\'я (до 40 символів).',closed:'Час на відповіді закінчився.',already:'Ви вже надіслали відповіді.',no_plays:'Прослуховування вичерпано.',no_audio:'Аудіофайл не знайдено.',started:'Тест уже розпочався, приєднатися не можна. Зверніться до вчителя.'};
 const say=e=>MSG[e.message]||e.message;
 
 /* ================= УЧЕНЬ ================= */
@@ -70,9 +70,22 @@ function run(code,tok){
   document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
   function result(s){
     const nm=localStorage['rn-'+code]||'';
-    view(`<h1>${esc(s.title)}</h1><div class="card"><p class="mut">${esc(nm)}${nm?', ':''}${new Date().toLocaleDateString('uk-UA')}</p><p>Ваш результат:</p><div class="big">${s.score} з ${s.total}</div><p>Оцінка: <b>${Math.max(1,Math.round(12*s.score/s.total))}</b> з 12</p></div>
+    view(`<h1>${esc(s.title)}</h1><div class="card"><p class="mut">${esc(nm)}${nm?', ':''}${new Date().toLocaleDateString('uk-UA')}</p><p>Ваш результат:</p><div class="big">${s.score} з ${s.total}</div><p>Оцінка: <b>${s.grade??Math.max(1,Math.round(12*s.score/s.total))}</b> з 12</p></div>
     <button class="pri" id="pr">Зберегти або роздрукувати</button><p class="mut">У вікні друку можна обрати «Зберегти як PDF».</p>`);
     $('#pr').onclick=()=>print()}
+  let au=null;
+  function audioUI(n){
+    const el=$('#au');if(!el)return;
+    el.innerHTML=`<div style="text-align:center"><button class="pri" id="pl" style="font-size:1.3rem;padding:14px 28px" ${n>0?'':'disabled'}>${n>0?'Слухати':'Прослуховування завершено'}</button><p class="mut">Залишилось прослуховувань: ${n}</p><p class="err" id="ae"></p></div>`;
+    $('#pl').onclick=async()=>{
+      const b=$('#pl');b.disabled=true;b.textContent='Завантаження…';let left=n;
+      au=new Audio('data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=');au.play().catch(()=>{});
+      try{const d=await rpc('play_audio',{p_code:code,p_token:tok});left=d.left;
+        const url=URL.createObjectURL(new Blob([Uint8Array.from(atob(d.data),c=>c.charCodeAt(0))],{type:d.mime}));
+        au.onended=()=>{URL.revokeObjectURL(url);audioUI(left)};
+        au.src=url;await au.play();b.textContent='Звучить…'}
+      catch(e){audioUI(left);$('#ae').textContent=say(e)}};
+  }
   const tick=async()=>{
     let s;try{s=await rpc('get_state',{p_code:code,p_token:tok})}catch{return}
     if(s.err){stop();delete localStorage['rt-'+code];return student()}
@@ -80,11 +93,11 @@ function run(code,tok){
     if(s.phase==key)return;key=s.phase;
     if(key=='wait')view(`<h1>${esc(s.title)}</h1><div class="card"><p>Чекаємо, поки вчитель почне. Не закривайте цю сторінку.</p></div>`);
     else if(key=='show'){
-      view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<div class="timer" id="tm"></div><p class="mut" id="cd"></p>':''}<div class="card read">${esc(s.text).replace(/\n/g,'<br>')}</div>`);
-      if(s.left!=null){const tot=s.left;dl=Date.now()+s.left*1000;
+      view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<div class="timer" id="tm"></div><p class="mut" id="cd"></p>':''}${s.audio?'<div class="card" id="au"></div>':`<div class="card read">${esc(s.text).replace(/\n/g,'<br>')}</div>`}`);
+      if(s.audio)audioUI(s.plays_left);if(s.left!=null){const tot=s.left;dl=Date.now()+s.left*1000;
         cd=setInterval(()=>{const r=Math.max(0,Math.ceil((dl-Date.now())/1000));$('#cd').textContent='Залишилось '+r+' с';$('#tm').style.width=(tot?r/tot*100:0)+'%';if(!r){clearInterval(cd);tick()}},1000)}
       else $('#cd')&&0;
-    }else if(key=='quiz'){clearInterval(cd);quiz(s)}
+    }else if(key=='quiz'){clearInterval(cd);au&&au.pause();quiz(s)}
     else if(key=='done'){if(send){const f=send;key='';await f(true);return}stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
   };
   const quiz=s=>{
