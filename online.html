@@ -32,6 +32,31 @@ table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{text-align:left
 dialog{border:1px solid var(--line);border-radius:12px;background:var(--card);color:var(--ink);max-width:420px;padding:18px}
 dialog::backdrop{background:rgba(0,0,0,.45)}
 @media print{button,.nav{display:none}body{background:#fff;color:#000}}
+
+#app.wide{max-width:980px}
+.rh{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:12px}
+.rb{display:flex;gap:10px;align-items:baseline;flex-wrap:wrap;color:var(--g)}
+.ok-box{background:var(--g2);color:var(--g);margin:0}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:16px}
+.big3{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:18px;align-items:center;background:var(--g2)}
+.dn{display:flex;gap:14px;align-items:center}
+.g4{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:12px}
+.n{font-size:1.9rem;line-height:1.2;display:inline-block}
+.dot{display:inline-grid;place-items:center;width:28px;height:28px;border-radius:50%;color:#fff;font-weight:700;font-size:.85rem;margin-bottom:6px}
+.dot.ok{background:var(--g)}.dot.bad{background:var(--bad)}.dot.sk{background:#8b97a0}
+.qr{display:grid;grid-template-columns:28px 1fr auto;gap:10px;align-items:center;padding:7px 0;border-top:1px solid var(--line);font-size:.92rem}
+.no{width:26px;height:26px;border-radius:50%;background:var(--g2);display:grid;place-items:center;font-size:.8rem}
+.rc{padding:1px 10px;border-radius:999px;font-size:.78rem;font-weight:600;white-space:nowrap}
+.rc.ok{background:var(--g2);color:var(--g)}.rc.bad{background:#fbe4e1;color:var(--bad)}.rc.sk{background:var(--line);color:var(--mut)}
+.rec{background:var(--g2);margin-top:12px}
+.rf{border-top:1px solid var(--line);margin-top:18px;padding-top:10px}
+td,th{text-align:left;padding:6px 8px;border-top:1px solid var(--line);font-size:.92rem}th{border-top:0;color:var(--mut);font-size:.8rem}
+@media print{
+ @page{size:A4;margin:12mm}
+ :root{--bg:#fff;--ink:#16231e;--g:#0f6b52;--g2:#e1efe9;--mut:#5f6f68;--line:#dbe4df;--card:#fff;--bad:#b3392f}
+ *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
+ .noprint{display:none!important}#app{max-width:none;padding:0}.card{break-inside:avoid}body{font-size:12.5px}}
 </style>
 </head>
 <body>
@@ -69,10 +94,30 @@ function run(code,tok){
   document.addEventListener('visibilitychange',()=>{if(active&&document.hidden&&['show','quiz'].includes(key))rpc('ping_leave',{p_token:tok}).catch(()=>{})});
   document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
   function result(s){
-    const nm=localStorage['rn-'+code]||'';
-    view(`<h1>${esc(s.title)}</h1><div class="card"><p class="mut">${esc(nm)}${nm?', ':''}${new Date().toLocaleDateString('uk-UA')}</p><p>Ваш результат:</p><div class="big">${s.score} з ${s.total}</div><p>Оцінка: <b>${s.grade??Math.max(1,Math.round(12*s.score/s.total))}</b> з 12</p></div>
-    <button class="pri" id="pr">Зберегти або роздрукувати</button><p class="mut">У вікні друку можна обрати «Зберегти як PDF».</p>`);
-    $('#pr').onclick=()=>print()}
+    const nm=localStorage['rn-'+code]||'—',n=s.total,ok=s.score,sk=s.skipped||0,bad=n-ok-sk,pct=n?Math.round(ok/n*100):0,
+      g=s.grade??Math.max(1,Math.round(12*ok/n)),R=s.review,
+      dt=s.finished?new Date(s.finished).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'',
+      took=s.took!=null?Math.floor(s.took/60)+' хв '+s.took%60+' с':'—',C=2*Math.PI*42,
+      st=R?R.map(r=>r.mine==null?'sk':r.mine==r.c?'ok':'bad'):[],
+      lbl={ok:'Правильно',bad:'Неправильно',sk:'Пропущено'},sym={ok:'✓',bad:'✕',sk:'–'},
+      dot=c=>`<span class="dot ${c}">${sym[c]||'★'}</span>`,
+      rec=st.map((x,i)=>x=='ok'?0:i+1).filter(Boolean),
+      donut=`<svg viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="${pct}%"><circle cx="50" cy="50" r="42" fill="none" stroke="var(--line)" stroke-width="10"/><circle cx="50" cy="50" r="42" fill="none" stroke="var(--g)" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C*pct/100} ${C}" transform="rotate(-90 50 50)"/><text x="50" y="56" text-anchor="middle" font-size="20" font-weight="700" fill="currentColor">${pct}%</text></svg>`;
+    view(`<div class="rh"><div class="rb"><b style="font-size:1.15rem">Читання й тест</b><span class="mut sm">Українська мова та література</span></div><span class="mut sm" style="text-align:right">Звіт про результати<br>${dt}</span></div>
+    <div class="row" style="margin:18px 0"><div><h1 style="font-size:1.9rem">Результати тесту</h1><p class="mut" style="margin:4px 0 0;font-size:1.1rem">${esc(s.title)}</p></div><div class="card ok-box" style="margin:0"><b>Завершено</b><br><span class="sm">Результат зафіксовано</span></div></div>
+    <div class="meta"><div><span class="mut sm">Дата проходження</span><br><b>${dt}</b></div><div><span class="mut sm">Учасник</span><br><b>${esc(nm)}</b></div><div><span class="mut sm">Тест</span><br><b>${esc(s.title)}</b></div></div>
+    <div class="card big3"><div><span class="mut">Ваш результат</span><div class="big">${ok} з ${n}</div><div>Оцінка: <b>${g}</b> з 12</div></div>
+      <div class="dn">${donut}<div><span class="mut">Правильні відповіді</span><br><b>${ok} з ${n}</b><div class="pb" style="width:140px;height:7px;border-radius:4px;background:var(--line)"><i style="display:block;height:100%;border-radius:4px;background:var(--g);width:${pct}%"></i></div></div></div>
+      <div><span class="mut sm">Час виконання</span><br><b>${took}</b><br><span class="mut sm">Статус</span><br><b>Завершено</b></div></div>
+    <h2>Розбір результатів</h2>
+    <div class="g4">${[['ok','Правильних відповідей',ok],['bad','Неправильних відповідей',bad],['sk','Пропущено',sk]].map(([c,l,v])=>`<div class="card">${dot(c)}<div class="mut sm">${l}</div><b class="n">${v}</b><div class="mut sm">${Math.round(v/n*100)}% від загальної кількості</div></div>`).join('')}<div class="card">${dot('')}<div class="mut sm">Оцінка за тест</div><b class="n">${g}</b> <span class="mut">/ 12</span></div></div>
+    ${R?`<div class="g2" style="margin-top:12px"><div class="card"><h2 style="margin-top:0">Результати за питаннями</h2>${R.map((r,i)=>`<div class="qr"><span class="no">${i+1}</span><span>${esc(r.q)}</span><span class="rc ${st[i]}">${lbl[st[i]]}</span></div>`).join('')}</div>
+      <div class="card" style="overflow-x:auto"><h2 style="margin-top:0">Відповіді учасника</h2><table><tr><th>№</th><th>Ваша відповідь</th><th>Правильна відповідь</th><th></th></tr>${R.map((r,i)=>`<tr><td>${i+1}</td><td>${r.mine==null?'—':esc(r.o[r.mine])}</td><td>${esc(r.o[r.c])}</td><td>${dot(st[i])}</td></tr>`).join('')}</table></div></div>
+      <div class="card rec"><b>Рекомендація</b><br>${rec.length?'Зверніть увагу на питання №'+rec.join(', ')+': саме в них були помилки чи пропуски.':'Помилок немає. Чудовий результат!'}</div>`
+    :`<div class="card rec noprint">Розбір за питаннями з’явиться тут після завершення заняття, якщо вчитель дозволить показ правильних відповідей. Ця сторінка оновиться сама.</div>`}
+    <p class="noprint" style="margin-top:16px"><button class="pri" id="pr">Зберегти як PDF або роздрукувати</button></p><p class="mut sm noprint">У вікні друку оберіть «Зберегти як PDF».</p>
+    <div class="rf mut sm">Читання й тест. Українська мова та література</div>`);
+    $('#app').classList.add('wide');$('#pr').onclick=()=>print()}
   let au=null;
   function audioUI(n){
     const el=$('#au');if(!el)return;
@@ -89,7 +134,9 @@ function run(code,tok){
   const tick=async()=>{
     let s;try{s=await rpc('get_state',{p_code:code,p_token:tok})}catch{return}
     if(s.err){stop();delete localStorage['rt-'+code];return student()}
-    if(s.submitted){stop();return result(s)}
+    if(s.submitted){const k2='r'+s.phase+(s.review?1:0);
+      if(k2!=key){key=k2;result(s);clearInterval(poll);if(s.phase!='done')poll=setInterval(tick,8000)}
+      if(s.phase=='done')stop();return}
     if(s.phase==key)return;key=s.phase;
     if(key=='wait')view(`<h1>${esc(s.title)}</h1><div class="card"><p>Чекаємо, поки вчитель почне. Не закривайте цю сторінку.</p></div>`);
     else if(key=='show'){
@@ -134,4 +181,3 @@ student();
 </script>
 </body>
 </html>
-
