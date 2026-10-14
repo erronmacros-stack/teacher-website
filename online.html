@@ -57,6 +57,27 @@ td,th{text-align:left;padding:6px 8px;border-top:1px solid var(--line);font-size
  :root{--bg:#fff;--ink:#16231e;--g:#0f6b52;--g2:#e1efe9;--mut:#5f6f68;--line:#dbe4df;--card:#fff;--bad:#b3392f}
  *{-webkit-print-color-adjust:exact;print-color-adjust:exact}
  .noprint{display:none!important}#app{max-width:none;padding:0}.card{break-inside:avoid}body{font-size:12.5px}}
+
+button:disabled{opacity:.5;cursor:default}
+.qg{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:16px;align-items:start}
+@media(max-width:860px){.qg{grid-template-columns:1fr}}
+.qi{display:flex;gap:14px;align-items:center;flex-wrap:wrap}
+.ico2{width:48px;height:48px;border-radius:14px;background:var(--g2);color:var(--g);display:grid;place-items:center;flex:none}
+.qc .o{padding:14px 16px;font-size:1.05rem;border-radius:12px;margin-top:10px}
+.qc .o:has(input:checked){background:var(--g2);border-color:var(--g)}
+.qt{font:600 1.35rem/1.35 Georgia,serif;margin:18px 0 6px}
+.qf{display:flex;justify-content:space-between;gap:10px;margin-top:22px;padding-top:16px;border-top:1px solid var(--line);flex-wrap:wrap}
+.nvg{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:10px 0 14px}
+.qn{width:100%;aspect-ratio:1;border-radius:50%;padding:0;margin:0;font-weight:600;background:var(--card)}
+.qn.cur{background:var(--g2);box-shadow:0 0 0 3px var(--g)}
+.qn.done{background:var(--g);border-color:var(--g);color:#fff}
+.lg{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--mut);margin-bottom:14px}
+.lg i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:8px;vertical-align:-1px;border:2px solid var(--line)}
+.lg i.a{background:var(--g);border-color:var(--g)}.lg i.c{background:var(--g2);border-color:var(--g)}
+.tip{background:var(--g2);border-radius:12px;padding:12px;font-size:.88rem;margin-bottom:12px}
+.ring{position:relative;width:150px;margin:0 auto 14px}
+.rt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
+.rt b{font-size:1.55rem;font-variant-numeric:tabular-nums}#rg{transition:stroke-dashoffset 1s linear}
 </style>
 </head>
 <body>
@@ -148,22 +169,44 @@ function run(code,tok){
     else if(key=='done'){if(send){const f=send;key='';await f(true);return}stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
   };
   const quiz=s=>{
-    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))}))),A={};let k=0,qtxt='';
-    const skipped=()=>Q.map((x,n)=>A[x.i]==null?n+1:0).filter(Boolean);
-    const draw=()=>{const x=Q[k];
-      view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<p class="mut" id="qc"></p>':''}
-      <div class="nav">${Q.map((y,n)=>`<button class="chip${A[y.i]!=null?' done':''}${n==k?' cur':''}" data-n="${n}" aria-label="Питання ${n+1}">${n+1}</button>`).join('')}</div>
-      <div class="card q"><h2>${k+1}. ${esc(x.q)}</h2>${x.o.map(o=>`<label class="o"><input type="radio" name="q" value="${o.j}" ${A[x.i]===o.j?'checked':''}>${esc(o.t)}</label>`).join('')}</div>
-      <div class="row">${k?'<button id="pv">Назад</button>':'<span></span>'}${k<Q.length-1?'<button class="pri" id="nx">Далі</button>':''}</div>
-      <p style="margin-top:16px"><button class="pri" id="fin">Завершити тест</button></p><p class="err" id="e"></p>
+    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))}))),A={},n=Q.length,C=2*Math.PI*52;
+    let k=0,qrem=s.left,qtot=s.left;
+    const fT=r=>String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0');
+    const skipped=()=>Q.map((x,m)=>A[x.i]==null?m+1:0).filter(Boolean);
+    const clock=()=>{if(qrem==null)return;document.querySelectorAll('.tt').forEach(e=>e.textContent=fT(qrem));
+      const g=$('#rg');if(g)g.style.strokeDashoffset=C*(1-(qtot?qrem/qtot:0))};
+    const upd=()=>{const c=document.querySelector('.qn.cur');c&&c.classList.add('done');const m=Object.keys(A).length;
+      $('#ac').textContent='Відповіли: '+m+' з '+n;$('#ab').style.width=m/n*100+'%'};
+    const draw=()=>{const x=Q[k],m=Object.keys(A).length,timed=qrem!=null;
+      $('#app').classList.add('wide');
+      view(`<div style="margin-bottom:14px"><b style="font-size:1.25rem">Тестування</b><div class="mut sm">${esc(s.title)}</div></div>
+      <div class="qg"><div>
+        <div class="card qi"><span class="ico2"><svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6z M14 3v5h5 M9 13h6 M9 17h6"/></svg></span>
+          <div style="flex:1"><b style="font-size:1.1rem">${esc(s.title)}</b><div class="mut sm">${n} питань${timed?', час на тест обмежено':''}</div></div><span class="rc ok">Активний</span></div>
+        <div class="card qc"><div class="row"><span class="mut sm">Питання ${k+1} з ${n}</span>${timed?'<span class="mut tt" style="font-variant-numeric:tabular-nums"></span>':''}</div>
+          <div class="pb" style="height:7px;border-radius:4px;background:var(--line);margin-top:6px"><i style="display:block;height:100%;border-radius:4px;background:var(--g);width:${(k+1)/n*100}%"></i></div>
+          <h2 class="qt">${k+1}. ${esc(x.q)}</h2>
+          ${x.o.map(o=>`<label class="o"><input type="radio" name="q" value="${o.j}" ${A[x.i]===o.j?'checked':''}><span>${esc(o.t)}</span></label>`).join('')}
+          <div class="qf"><button id="pv" ${k?'':'disabled'}>← Попереднє питання</button>${k<n-1?'<button class="pri" id="nx">Наступне питання →</button>':'<button class="pri fin">Завершити тест</button>'}</div>
+        </div><p class="err" id="e"></p>
+      </div>
+      <aside class="card">
+        ${timed?`<div class="ring"><svg viewBox="0 0 120 120" width="150" height="150" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="9"/><circle id="rg" cx="60" cy="60" r="52" fill="none" stroke="var(--g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" transform="rotate(-90 60 60)"/></svg><div class="rt"><b class="tt"></b><span class="mut sm">Час до завершення</span></div></div>`:''}
+        <div class="mut sm" id="ac">Відповіли: ${m} з ${n}</div><div class="pb" style="height:7px;border-radius:4px;background:var(--line);margin:4px 0 16px"><i id="ab" style="display:block;height:100%;border-radius:4px;background:var(--g);width:${m/n*100}%"></i></div>
+        <b>Навігація по питаннях</b>
+        <div class="nvg">${Q.map((y,i)=>`<button class="qn${A[y.i]!=null?' done':''}${i==k?' cur':''}" data-n="${i}" aria-label="Питання ${i+1}${A[y.i]!=null?', відповідь дано':''}">${i+1}</button>`).join('')}</div>
+        <div class="lg"><span><i class="a"></i>Відповідено</span><span><i class="c"></i>Поточне питання</span><span><i></i>Не відповідено</span></div>
+        <div class="tip"><b>Порада</b><br>Уважно читайте запитання та всі варіанти відповідей.${timed?' Час на тест обмежений, слідкуйте за таймером.':''}</div>
+        <button class="fin" style="width:100%;margin:0">Завершити тест</button>
+      </aside></div>
       <dialog id="dg"><p id="dm"></p><button id="no">Повернутися</button><button class="pri" id="yes">Так, завершити</button></dialog>`);
-      if($('#qc'))$('#qc').textContent=qtxt;
-      document.querySelectorAll('.chip').forEach(b=>b.onclick=()=>{k=+b.dataset.n;draw()});
-      document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{A[x.i]=+i.value;document.querySelector('.chip.cur').classList.add('done')});
-      if($('#pv'))$('#pv').onclick=()=>{k--;draw()};if($('#nx'))$('#nx').onclick=()=>{k++;draw()};
-      $('#fin').onclick=()=>{const sk=skipped();
+      clock();
+      document.querySelectorAll('.qn').forEach(b=>b.onclick=()=>{k=+b.dataset.n;draw()});
+      document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{A[x.i]=+i.value;upd()});
+      if(k)$('#pv').onclick=()=>{k--;draw()};if($('#nx'))$('#nx').onclick=()=>{k++;draw()};
+      document.querySelectorAll('.fin').forEach(b=>b.onclick=()=>{const sk=skipped();
         $('#dm').textContent=sk.length?`Ви не відповіли на питання: ${sk.join(', ')}. Завершити тест без них? Після цього змінити відповіді буде неможливо.`:'Ви впевнені, що хочете завершити тест? Після цього змінити відповіді буде неможливо.';
-        $('#dg').showModal()};
+        $('#dg').showModal()});
       $('#no').onclick=()=>$('#dg').close();$('#yes').onclick=()=>{$('#dg').close();send&&send()};
     };
     send=async force=>{
@@ -172,7 +215,7 @@ function run(code,tok){
       catch(e){if(e.message=='already'){send=null;key='';return tick()}
         if(force){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}else $('#e').textContent=say(e)}};
     draw();
-    if(s.left!=null){const t0=Date.now()+s.left*1000;cd=setInterval(()=>{const r=Math.max(0,Math.ceil((t0-Date.now())/1000));qtxt='Залишилось на відповіді: '+r+' с';if($('#qc'))$('#qc').textContent=qtxt;if(!r){clearInterval(cd);send&&send(true)}},1000)}
+    if(qrem!=null){const t0=Date.now()+qrem*1000;cd=setInterval(()=>{qrem=Math.max(0,Math.ceil((t0-Date.now())/1000));clock();if(!qrem){clearInterval(cd);send&&send(true)}},1000)}
   };
   poll=setInterval(tick,2500);tick();
 }
