@@ -73,7 +73,7 @@ async function load(){
     const base=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html';
     const det=(k,d,t,b)=>`<details data-k="${k}" data-d="${d}" ${(X.has(k)?!d:d)?'open':''}><summary>${t}</summary>${b}</details>`;
     $('#L').innerHTML=`<div class="row"><h2>Тести</h2><span><button class="pri" data-a="edit" data-id="">Новий тест</button><label class="btn" style="margin:0 0 6px">Імпорт .json<input type="file" id="f" accept=".json" hidden></label></span></div>
-    ${T.map(t=>`<div class="card row"><b>${esc(t.title)}</b><span><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><button data-a="edit" data-id="${t.id}">Редагувати</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></span></div>`).join('')||'<p class="mut">Ще немає тестів. Створіть перший.</p>'}
+    ${T.map(t=>`<div class="card row"><b>${esc(t.title)}</b><span><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><button data-a="edit" data-id="${t.id}">Редагувати</button><button data-a="exp" data-id="${t.id}">Зберегти у файл</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></span></div>`).join('')||'<p class="mut">Ще немає тестів. Створіть перший.</p>'}
     <h2>Заняття</h2>${S.map(s=>{
       const A=s.attempts,D=A.filter(a=>a.finished_at),qs=s.tests?.data?.qs||[],avg=D.length?(D.reduce((x,a)=>x+grade(a.score,a.total),0)/D.length).toFixed(1):'—';
       return`<div class="card"><div class="row"><div><div class="code">${s.code}</div><span class="mut">${esc(s.tests?.title||'')}: ${ST[s.status]}</span></div>
@@ -132,6 +132,9 @@ document.addEventListener('click',async e=>{
     if(a=='save'){const o=clean(E);E.id?await api('/rest/v1/tests?id=eq.'+E.id,{method:'PATCH',body:o}):await api('/rest/v1/tests',{method:'POST',body:o,prefer:'return=minimal'});return teacher()}
     if(a=='new'){for(let k=0;k<5;k++){try{await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=minimal'});break}catch(x){if(k==4)throw x}}}
     else if(a=='st')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:v=='show'?{status:v,started_at:now}:v=='quiz'?{status:v,quiz_at:now}:{status:v,ended_at:now}});
+    else if(a=='exp'){const t=T.find(x=>x.id==id),l=document.createElement('a');
+      l.href=URL.createObjectURL(new Blob([JSON.stringify({title:t.title,...t.data},null,1)],{type:'application/json'}));
+      l.download=t.title.replace(/[^\p{L}\p{N}]+/gu,'_')+'.json';l.click()}
     else if(a=='late')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{late_ok:v!='true'}});
     else if(a=='dt'){if(!confirm('Видалити тест разом з усіма його заняттями та результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/tests?id=eq.'+id,{method:'DELETE'})}
     else if(a=='ds'){if(!confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'})}
