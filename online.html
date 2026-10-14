@@ -1,0 +1,148 @@
+<!doctype html>
+<html lang="uk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тест онлайн</title>
+<style>
+:root{--bg:#eef2f0;--ink:#16231e;--g:#0f6b52;--g2:#d8e9e2;--mut:#5b6b64;--line:#c5d3cc;--bad:#b3392f;--card:#fff}
+@media(prefers-color-scheme:dark){:root{--bg:#121a17;--ink:#e6efeb;--g:#3fb18f;--g2:#1d2e28;--mut:#9fb2aa;--line:#2f433b;--card:#18231f}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,"Segoe UI",Roboto,sans-serif}
+#app{max-width:720px;margin:0 auto;padding:24px 16px 48px}
+h1{font-size:1.5rem;margin:0 0 12px}h2{font-size:1.1rem;margin:0 0 8px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin-bottom:14px}
+label{display:block;font-weight:600;font-size:.9rem;margin-bottom:12px}
+input[type=text],input[type=email],input[type=password]{display:block;width:100%;margin-top:4px;padding:9px 10px;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px}
+button,.btn{font:inherit;font-weight:600;padding:8px 14px;border-radius:8px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;margin:0 6px 6px 0;display:inline-block}
+button:focus-visible,input:focus-visible{outline:3px solid var(--g);outline-offset:1px}
+.pri{background:var(--g);border-color:var(--g);color:#fff}.danger{color:var(--bad)}
+.err{color:var(--bad);min-height:1.5em}.mut{color:var(--mut)}
+.code{font:700 2rem/1 ui-monospace,Consolas,monospace;letter-spacing:.15em}
+table{width:100%;border-collapse:collapse;font-size:.95rem}td,th{text-align:left;padding:6px 8px;border-top:1px solid var(--line)}
+.row{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+.read{font:1.35rem/1.7 Georgia,serif;user-select:none;-webkit-user-select:none}
+.timer{height:8px;background:var(--g);border-radius:4px;margin-bottom:16px;transition:width 1s linear}
+.q{margin-bottom:20px}.q h2{font-family:Georgia,serif;font-size:1.25rem}
+.o{display:flex;gap:10px;align-items:center;padding:8px 10px;border:1px solid var(--line);border-radius:8px;margin-top:6px;cursor:pointer;font-weight:400}
+.o input{width:20px;height:20px;accent-color:var(--g);margin:0}
+.big{font-size:2.4rem;font-weight:700;color:var(--g)}
+</style>
+</head>
+<body>
+<div id="app"></div>
+<script>
+const URL_='https://nyilajegoqdhujnvhsoe.supabase.co',KEY_='sb_publishable_HgNdf6MvwSLU4_7r5a-vrA_KKUvR9aw';
+const $=s=>document.querySelector(s),view=h=>$('#app').innerHTML=h;
+const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
+let TOK=sessionStorage.tk||null;
+async function api(path,{method='GET',body,prefer}={}){
+  const h={apikey:KEY_,'Content-Type':'application/json'};if(TOK)h.Authorization='Bearer '+TOK;if(prefer)h.Prefer=prefer;
+  const r=await fetch(URL_+path,{method,headers:h,body:body&&JSON.stringify(body)});
+  const t=await r.text();let d;try{d=JSON.parse(t)}catch{d=t}
+  if(!r.ok){if(r.status==401&&TOK){delete sessionStorage.tk;TOK=null}throw new Error((d&&(d.message||d.msg||d.error_description))||r.status)}
+  return d}
+const rpc=(n,b)=>api('/rest/v1/rpc/'+n,{method:'POST',body:b});
+const MSG={no_session:'Заняття з таким кодом не знайдено або воно вже завершене.',name_taken:'Це ім\'я вже використано в цьому занятті. Якщо це ви, зверніться до вчителя.',bad_name:'Введіть ім\'я (до 40 символів).',closed:'Час на відповіді закінчився.',already:'Ви вже надіслали відповіді.'};
+const say=e=>MSG[e.message]||e.message;
+
+/* ================= УЧЕНЬ ================= */
+function student(){
+  const c0=new URLSearchParams(location.search).get('c')||'';
+  view(`<h1>Приєднатися до тесту</h1><div class="card"><label>Код заняття<input type="text" id="c" value="${esc(c0)}" maxlength="6" autocapitalize="characters" autocomplete="off"></label>
+  <label>Ваше ім'я<input type="text" id="n" maxlength="40" autocomplete="off"></label><button class="pri" id="j">Приєднатися</button><p class="err" id="e"></p></div>`);
+  $('#j').onclick=async()=>{const c=$('#c').value.trim().toUpperCase();
+    try{const tk=await rpc('join_session',{p_code:c,p_name:$('#n').value});localStorage['rt-'+c]=tk;run(c,tk)}catch(e){$('#e').textContent=say(e)}};
+  const m=Object.keys(localStorage).find(k=>k.startsWith('rt-')&&k.slice(3)==c0.toUpperCase());
+  if(m)run(c0.toUpperCase(),localStorage[m]);
+}
+function run(code,tok){
+  let key='',active=true,dl=0,cd,poll;
+  const stop=()=>{active=false;clearInterval(poll);clearInterval(cd)};
+  document.addEventListener('visibilitychange',()=>{if(active&&document.hidden&&['show','quiz'].includes(key))rpc('ping_leave',{p_token:tok}).catch(()=>{})});
+  document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
+  const tick=async()=>{
+    let s;try{s=await rpc('get_state',{p_code:code,p_token:tok})}catch{return}
+    if(s.err){stop();delete localStorage['rt-'+code];return student()}
+    if(s.submitted){stop();return view(`<h1>${esc(s.title)}</h1><div class="card"><p>Відповіді надіслано. Ваш результат:</p><div class="big">${s.score} з ${s.total}</div></div>`)}
+    if(s.phase==key)return;key=s.phase;
+    if(key=='wait')view(`<h1>${esc(s.title)}</h1><div class="card"><p>Чекаємо, поки вчитель почне. Не закривайте цю сторінку.</p></div>`);
+    else if(key=='show'){
+      view(`<h1>${esc(s.title)}</h1>${s.left!=null?'<div class="timer" id="tm"></div><p class="mut" id="cd"></p>':''}<div class="card read">${esc(s.text).replace(/\n/g,'<br>')}</div>`);
+      if(s.left!=null){const tot=s.left;dl=Date.now()+s.left*1000;
+        cd=setInterval(()=>{const r=Math.max(0,Math.ceil((dl-Date.now())/1000));$('#cd').textContent='Залишилось '+r+' с';$('#tm').style.width=(tot?r/tot*100:0)+'%';if(!r){clearInterval(cd);tick()}},1000)}
+      else $('#cd')&&0;
+    }else if(key=='quiz'){clearInterval(cd);quiz(s)}
+    else if(key=='done'){stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
+  };
+  const quiz=s=>{
+    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))})));
+    view(`<h1>${esc(s.title)}</h1>${Q.map((x,k)=>`<div class="card q"><h2>${k+1}. ${esc(x.q)}</h2>${x.o.map(o=>`<label class="o"><input type="radio" name="q${x.i}" value="${o.j}">${esc(o.t)}</label>`).join('')}</div>`).join('')}
+    <button class="pri" id="s">Надіслати відповіді</button><p class="err" id="e"></p>`);
+    $('#s').onclick=async()=>{
+      const ans=s.qs.map((_,i)=>{const r=document.querySelector(`input[name=q${i}]:checked`);return r?+r.value:null});
+      if(ans.includes(null)&&!confirm('Не на всі питання є відповідь. Надіслати все одно?'))return;
+      try{await rpc('submit',{p_code:code,p_token:tok,p_ans:ans});tick();key=''}catch(e){$('#e').textContent=say(e)}};
+  };
+  poll=setInterval(tick,2500);tick();
+}
+
+/* ================= ВЧИТЕЛЬ ================= */
+const ST={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',done:'Завершено'};
+const genCode=()=>Array.from(crypto.getRandomValues(new Uint8Array(6)),b=>'ABCDEFGHJKLMNPQRSTUVWXYZ23456789'[b%32]).join('');
+function teacher(){
+  if(!TOK)return view(`<h1>Вхід для вчителя</h1><div class="card"><label>Пошта<input type="email" id="m"></label><label>Пароль<input type="password" id="p"></label>
+    <button class="pri" id="l">Увійти</button><p class="err" id="e"></p></div>`),
+    $('#l').onclick=async()=>{try{const d=await api('/auth/v1/token?grant_type=password',{method:'POST',body:{email:$('#m').value.trim(),password:$('#p').value}});
+      TOK=sessionStorage.tk=d.access_token;teacher()}catch(e){$('#e').textContent='Не вдалося увійти: '+e.message}};
+  view(`<div class="row"><h1>Панель вчителя</h1><button id="out">Вийти</button></div>
+  <div class="card"><h2>Додати тест із файлу</h2><p class="mut">Файл .json зі збереженого тесту застосунку «Читання й тест». Поки підтримується лише текстовий режим.</p>
+  <input type="file" id="f" accept=".json"><p class="err" id="e"></p></div><div id="L"></div>`);
+  $('#out').onclick=()=>{delete sessionStorage.tk;TOK=null;location.reload()};
+  $('#f').onchange=async e=>{const f=e.target.files[0];if(!f)return;
+    try{const j=JSON.parse(await f.text()),o=clean(j);await api('/rest/v1/tests',{method:'POST',body:o,prefer:'return=minimal'});$('#e').textContent='';e.target.value='';load()}
+    catch(x){$('#e').textContent=x.message}};
+  $('#app').onclick=act;load();setInterval(()=>{if(TOK&&!document.hidden)load()},4000);
+}
+function clean(j){
+  if(j.type=='audio')throw new Error('Аудіо-режим в онлайн-версії поки не підтримується.');
+  const qs=(j.qs||[]).map(x=>{const o=[],m={};(x.o||[]).forEach((t,k)=>{t=String(t).trim();if(t){m[k]=o.length;o.push(t)}});
+    return(m[x.c]==null||o.length<2||!String(x.q).trim())?null:{q:String(x.q).trim(),o,c:m[x.c]}}).filter(Boolean);
+  if(!qs.length||!String(j.text||'').trim())throw new Error('У файлі немає тексту або повних питань.');
+  return{title:j.title||'Без назви',data:{type:'text',text:j.text,secs:Math.max(0,+j.secs||0),qs}}}
+async function load(){
+  try{
+    const [T,S]=await Promise.all([api('/rest/v1/tests?select=id,title&order=created_at.desc'),
+      api('/rest/v1/sessions?select=id,code,status,tests(title),attempts(id,name,score,total,leaves,finished_at)&order=created_at.desc')]);
+    const base=location.origin+location.pathname;
+    $('#L').innerHTML=`<h2>Тести</h2>${T.map(t=>`<div class="card row"><b>${esc(t.title)}</b><span><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></span></div>`).join('')||'<p class="mut">Ще немає тестів.</p>'}
+    <h2>Заняття</h2>${S.map(s=>`<div class="card"><div class="row"><div><div class="code">${s.code}</div><span class="mut">${esc(s.tests?.title||'')} — ${ST[s.status]}</span></div>
+      <div>${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}</div></div>
+      <p class="mut">Посилання для учнів: ${base}?c=${s.code}</p>
+      <table><tr><th>Учень</th><th>Результат</th><th>Виходи з вкладки</th><th></th></tr>${s.attempts.map(a=>`<tr><td>${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td>${a.leaves}</td><td><button class="danger" data-a="da" data-id="${a.id}">Скинути</button></td></tr>`).join('')}</table>
+      <p><button data-a="csv" data-id="${s.id}">Завантажити таблицю</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`).join('')||'<p class="mut">Ще немає занять.</p>'}`;
+    window._S=S;
+  }catch(e){if(!TOK)teacher();}
+}
+async function act(e){
+  const b=e.target.closest('button[data-a]');if(!b)return;const{a,id,v}=b.dataset;
+  try{
+    if(a=='new'){for(let i=0;i<5;i++){try{await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=minimal'});break}catch(x){if(i==4)throw x}}}
+    else if(a=='st')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:v=='show'?{status:v,started_at:new Date().toISOString()}:{status:v}});
+    else if(a=='dt'&&confirm('Видалити тест разом з усіма його заняттями та результатами? Спершу завантажте таблицю.'))await api('/rest/v1/tests?id=eq.'+id,{method:'DELETE'});
+    else if(a=='ds'&&confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'});
+    else if(a=='da'&&confirm('Скинути спробу? Учень зможе пройти тест заново.'))await api('/rest/v1/attempts?id=eq.'+id,{method:'DELETE'});
+    else if(a=='csv'){const s=window._S.find(x=>x.id==id);
+      const q=x=>'"'+String(x).replace(/"/g,'""')+'"';
+      const rows=[['Учень','Бал','З','Виходи з вкладки'],...s.attempts.map(t=>[t.name,t.finished_at?t.score:'',t.finished_at?t.total:'',t.leaves])];
+      const u=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv'}));
+      const l=document.createElement('a');l.href=u;l.download='results-'+s.code+'.csv';l.click()}
+    load();
+  }catch(x){alert(x.message)}
+}
+
+new URLSearchParams(location.search).has('teacher')?teacher():student();
+</script>
+</body>
+</html>
