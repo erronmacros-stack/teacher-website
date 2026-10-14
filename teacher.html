@@ -108,7 +108,7 @@ async function saveTest(o,id){
 async function load(){
   try{
     [T,S]=await Promise.all([api('/rest/v1/tests?select=id,title,data&order=created_at.desc'),
-      api('/rest/v1/sessions?select=id,code,status,late_ok,created_at,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);
+      api('/rest/v1/sessions?select=id,code,status,late_ok,reveal,created_at,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);
     render();
   }catch(e){if(!TOK)teacher();else if($('#M'))$('#M').innerHTML='<p class="err">Помилка: '+esc(e.message)+'</p>'}
 }
@@ -151,6 +151,7 @@ function detail(){
     <p class="mut sm" style="word-break:break-all">Посилання для учнів: ${link}</p><button data-a="copy" data-v="${link}">Копіювати посилання</button>
     <p style="margin-top:12px">${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}</p>
     <p class="mut sm">Приєднання після старту: <b>${s.late_ok?'дозволено':'закрито'}</b> <button data-a="late" data-id="${s.id}" data-v="${s.late_ok}">${s.late_ok?'Закрити':'Дозволити'}</button></p>
+    <p class="mut sm">Показувати учням правильні відповіді після завершення заняття: <b>${s.reveal?'так':'ні'}</b> <button data-a="rev" data-id="${s.id}" data-v="${s.reveal}">${s.reveal?'Вимкнути':'Увімкнути'}</button></p>
     <p><button data-a="csv" data-id="${s.id}">Завантажити таблицю</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`;
   return`<button class="lnk" data-a="nav" data-v="${PREV}">← Назад</button>
    <div class="top"><div><span class="mut sm">Заняття</span><h1>${esc(s.tests?.title||'Без назви')}</h1><p class="mut" style="margin:4px 0 0">${A.length} учн., ${i.qs.length} запитань, ${fmt(s.created_at)}</p></div>${chip(s)}</div>
@@ -224,6 +225,7 @@ document.addEventListener('click',async e=>{
       if(t.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');ex.audio=f[0]}
       l.href=URL.createObjectURL(new Blob([JSON.stringify(ex,null,1)],{type:'application/json'}));
       l.download=t.title.replace(/[^\p{L}\p{N}]+/gu,'_')+'.json';l.click()}
+    else if(a=='rev')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{reveal:v!='true'}});
     else if(a=='late')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{late_ok:v!='true'}});
     else if(a=='dt'){if(!confirm('Видалити тест разом з усіма його заняттями та результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/tests?id=eq.'+id,{method:'DELETE'})}
     else if(a=='ds'){if(!confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'});V=PREV;SEL=null}
