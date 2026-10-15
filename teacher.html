@@ -189,16 +189,34 @@ const side=on=>`<nav class="side"><div class="brand">${ic('book')}Читання
     <div style="flex:1"></div><button class="nv" data-a="out">Вийти</button></nav>`;
 async function copyTxt(v){try{await navigator.clipboard.writeText(v)}catch(e){const x=document.createElement('textarea');x.value=v;x.style.cssText='position:fixed;opacity:0';document.body.appendChild(x);x.select();document.execCommand('copy');x.remove()}}
 function toast(m){let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';e.setAttribute('role','status');document.body.appendChild(e)}e.textContent=m;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',1800)}
-function parseQs(txt){const qs=[],n=s=>s.toLowerCase().replace('a','а').replace('c','с').replace('e','е');let q=null,m;
- for(let l of txt.replace(/\r/g,'').split('\n')){l=l.trim();if(!l)continue;
-  if(m=l.match(/^\d+\s*[.)]\s*(.+)$/)){q={q:m[1],o:[],L:[],c:[],ans:''};qs.push(q);continue}
+function parseQs(txt){
+ const CY='абвгдеєжзи',LA='abcdefghij',cn=x=>{x=String(x).toLowerCase();const i=CY.indexOf(x);return i<0?LA.indexOf(x):i},cl=s=>String(s).replace(/\*\*|__/g,'').trim(),L=txt.replace(/\r/g,'').split('\n'),LET='A-Za-zА-Яа-яІіЇїЄєҐґ';
+ const ki=L.findIndex(l=>l.length<60&&/^[#*\s]*(ключ|відповіді|answers?\b|answer key)/i.test(l)&&!/^\d/.test(l.trim())),body=ki<0?L:L.slice(0,ki),K={};
+ if(ki>=0)L.slice(ki+1).forEach(l=>{l=cl(l).replace(/^[-*•]\s*/,'');let m;const ps=[...l.matchAll(new RegExp('(\\d+)\\s*[-—–:=.)]\\s*(['+LET+'])(?=[\\s,;]|$)','g'))];
+  if(ps.length>1&&!/^питання/i.test(l)){ps.forEach(p=>K[+p[1]]=p[2]);return}
+  if(m=l.match(/^(?:питання\s*)?(\d+)\s*[:.)—–-]\s*(.+)$/i))K[+m[1]]=m[2].trim()});
+ const qs=[];let q=null,m;
+ for(const raw of body){const l=raw.trim();if(!l||/^[-_*]{3,}$/.test(l))continue;let hd=false;
+  m=l.match(/^#{1,6}\s*(?:питання|question)?\s*(\d+)\s*[.):]?\s*(.*)$/i)||l.match(/^\**\s*(?:питання|question)\s*(\d+)\s*\**\s*[.):]?\s*\**\s*(.*)$/i);
+  if(m)hd=true;else m=l.match(/^(\d+)\s*[.)]\s*(.+)$/);
+  if(m){let r=cl(m[2]),h='';if(hd)r=r.replace(/\(([^)]*)\)/,(_,x)=>{h=x;return''}).trim();q={n:+m[1],q:r,h:h.toLowerCase(),o:[],L:[],c:[],ans:'',rows:[],hdr:false};qs.push(q);continue}
   if(!q)continue;
-  if(m=l.match(/^(?:відповідь|правильна відповідь|answer)\s*[:\-]\s*(.+)$/i)){q.ans=m[1].trim();continue}
-  if(m=l.match(/^([a-zA-Zа-яіїєґА-ЯІЇЄҐ])\s*[.)]\s*(.+)$/)){let s=m[2].trim(),ok=/\+$/.test(s)||/^\*/.test(s);s=s.replace(/\s*\+$/,'').replace(/^\*\s*/,'');q.o.push(s);q.L.push(n(m[1]));if(ok)q.c.push(q.o.length-1);continue}
-  if(!q.o.length)q.q+=' '+l}
- return qs.map(q=>{if(!q.o.length)return{type:'short',q:q.q,a:q.ans,cs:false,expl:''};
-  if(!q.c.length&&q.ans)q.ans.split(/[\s,;]+/).forEach(x=>{const k=q.L.indexOf(n(x));if(k>=0)q.c.push(k)});
-  const mu=q.c.length>1;return{type:mu?'multi':'single',q:q.q,o:pad(q.o),c:mu?q.c:(q.c.length?q.c[0]:-1),partial:mu,expl:''}})}
+  if(l[0]=='|'){if(/^\|?[\s:|-]+\|?$/.test(l))continue;const c=l.replace(/^\||\|$/g,'').split('|').map(cl);
+   if(!q.rows.length&&!q.hdr&&!/^\d+\s*[.)]/.test(c[0])){q.hdr=true;continue}
+   const rm=(c[1]||'').match(new RegExp('^(['+LET+'])\\s*[.)]\\s*(.+)$'));q.rows.push({l:c[0].replace(/^\d+\s*[.)]\s*/,''),rl:rm&&cn(rm[1])>=0?cn(rm[1]):-1,r:rm&&cn(rm[1])>=0?rm[2].trim():(c[1]||'')});continue}
+  if(m=l.match(/^(?:відповідь|правильна відповідь|answer)\s*[:\-]\s*(.+)$/i)){q.ans=cl(m[1]);continue}
+  let o=l.match(new RegExp('^[-*•]?\\s*(?:\\[([ xх])\\]\\s*)?\\**(['+LET+'])\\**\\s*[.)]\\s*(.+)$')),cb=l.match(/^[-*]\s*\[([ xхX])\]\s*(.+)$/);
+  if(o&&cn(o[2])<0)o=null;
+  if(o||cb){let s=o?o[3]:cb[2],ok=!!((o?o[1]:cb[1])&&(o?o[1]:cb[1])!=' ')||/(\+|[✓✔])\s*$/.test(s);s=cl(s).replace(/\s*(\+|[✓✔])\s*$/,'').trim();q.o.push(s);q.L.push(o?cn(o[2]):q.o.length-1);if(ok)q.c.push(q.o.length-1);continue}
+  if(!q.o.length&&!q.rows.length)q.q+=' '+cl(l)}
+ return qs.map(q=>{const kv=K[q.n]||'',H=q.h+' '+q.q.toLowerCase(),ty=/співстав|match/.test(H)?'match':/введен|коротк|впишіть|short/.test(H)?'short':/кілька|декілька|усі вірн|multi/.test(H)?'multi':'';
+  if(q.rows.length>1){const km={};[...kv.matchAll(new RegExp('(\\d+)\\s*[-—–:=]\\s*(['+LET+'])','g'))].forEach(x=>km[+x[1]]=cn(x[2]));
+   return{type:'match',q:q.q.trim(),partial:true,expl:'',pairs:q.rows.map((w,k)=>{const t=km[k+1]!=null?q.rows.find(z=>z.rl==km[k+1]):null;return{l:w.l,r:(t||w).r}})}}
+  if(q.o.length){if(!q.c.length)(q.ans||kv).split(/\(|\.\s|\.$/)[0].split(/[\s,;]+/).forEach(x=>{if(!x||/^(і|та|and)$/i.test(x))return;const k=q.L.indexOf(cn(x));if(k>=0&&!q.c.includes(k))q.c.push(k)});
+   const mu=q.c.length>1||ty=='multi';return{type:mu?'multi':'single',q:q.q.trim(),o:pad(q.o),c:mu?q.c:(q.c.length?q.c[0]:-1),partial:mu,expl:''}}
+  const a=q.ans||kv;let ex='',list=[];
+  if(a&&a.length<=60&&!/зараховуєтьс|щонайменше|залежить/i.test(a)){const s=a.replace(/\.$/,'').replace(/^приблизно\s*/i,'');list=s.split(/\s*[;/]\s*/);const nm=s.match(/^(\d+(?:[.,]\d+)?)\s*(°\s*[CС]|градус\w*)?$/i);if(nm)list.push(nm[1],nm[1]+' °C',nm[1]+'°C')}else ex=a;
+  return{type:'short',q:q.q.trim(),a:[...new Set(list)].join('\n'),cs:false,expl:ex}})}
 function printTest(o){const d=o.data,qs=d.qs||[],LT='абвгдеєжзи',key=[];
  const body=qs.map((q,i)=>{const ty=q.type||'single';let h=`<div class="pq"><b>${i+1}. ${esc(q.q)}</b>`;
   if(ty=='short'){h+='<div class="pl"></div>';key.push(q.a.join(' / '))}
@@ -383,7 +401,7 @@ function draw(){
     ${E.scale?`<div class="scale">${E.scale.map((v,i)=>`<label>${i+1}<input type="number" min="0" max="100" step="0.1" data-s="${i}" value="${v}"></label>`).join('')}</div>`:''}
     <div class="ed-box" id="qsum">${sum()}</div>
   </div></div></section>
-  ${E.imp?`<section class="ed-card"><h2 class="ed-h">Імпорт питань з тексту</h2><p class="mut sm" style="margin-top:-10px">Вставте текст із Word чи Telegram. Питання нумеруються («1.» або «1)»), варіанти починаються з літери («а)»). Правильний варіант позначте «+» в кінці або рядком «Відповідь: б». Питання без варіантів стануть короткою відповіддю.</p><textarea id="imp" rows="10" placeholder="1. Столицею України є:\nа) Львів\nб) Київ+\nв) Одеса"></textarea><div class="ed-acts" style="margin-top:12px"><button class="bt pri" data-a="impgo">Розпізнати й додати</button><button class="bt" data-a="impt">Закрити</button></div></section>`:''}
+  ${E.imp?`<section class="ed-card"><h2 class="ed-h">Імпорт питань з тексту</h2><p class="mut sm" style="margin-top:-10px">Вставте текст із Word чи Telegram. Підтримуються заголовки («## Питання 1», «1.», «1)»), варіанти «А)», «а.» чи «- [x]», правильний із «+» в кінці, рядок «Відповідь: б» або ключ у кінці тексту («Ключ до відповідей»). Таблиці співставлення та питання без варіантів (коротка відповідь) теж розпізнаються.</p><textarea id="imp" rows="10" placeholder="1. Столицею України є:\nа) Львів\nб) Київ+\nв) Одеса"></textarea><div class="ed-acts" style="margin-top:12px"><button class="bt pri" data-a="impgo">Розпізнати й додати</button><button class="bt" data-a="impt">Закрити</button></div></section>`:''}
   ${E.qs.map(qEd).join('')}
   <div class="addrow"><b>Додати питання:</b>${[['single','Одна відповідь'],['multi','Кілька відповідей'],['short','Коротка відповідь'],['match','Співставлення']].map(([k,l])=>`<button class="bt ghost" data-a="addq" data-v="${k}">${ic('plus')}${l}</button>`).join('')}<button class="bt" data-a="impt">${ic('doc')}Імпорт з тексту</button></div>
   <div class="ed-foot"><button class="bt pri" data-a="save">${ic('save')}Зберегти тест</button><button class="bt" data-a="prev">${ic('doc')}Спробувати як учень</button><button class="bt" data-a="printe">${ic('doc')}Версія для друку</button><button class="bt" data-a="back">${ic('back')}Назад без збереження</button></div>
@@ -444,7 +462,7 @@ document.addEventListener('click',async e=>{
     if(a=='delo'){const q=E.qs[i],j=+k;q.o.splice(j,1);if(q.type=='multi')q.c=q.c.filter(z=>z!==j).map(z=>z>j?z-1:z);else q.c=q.c==j?-1:(q.c>j?q.c-1:q.c);return draw()}
     if(a=='impt'){E.imp=!E.imp;return draw()}
     if(a=='impgo'){const L=parseQs($('#imp').value);if(!L.length){alert('Не вдалося розпізнати питання. Перевірте нумерацію («1.») і літери варіантів («а)»).');return}
-      if(E.qs.length==1&&!E.qs[0].q.trim()&&E.qs[0].o?.every(x=>!x))E.qs=[];E.qs.push(...L);E.imp=false;draw();toast('Додано питань: '+L.length);return}
+      if(E.qs.length==1&&!E.qs[0].q.trim()&&E.qs[0].o?.every(x=>!x))E.qs=[];E.qs.push(...L);E.imp=false;draw();const bad=L.filter(x=>!cq(x)).length;toast('Додано питань: '+L.length+(bad?'. Потребують уваги: '+bad+' (позначені «!»)':''));return}
     if(a=='printe')return printTest(clean(E));
     if(a=='printt'){const t0=T.find(x=>x.id==id);return printTest({title:t0.title,data:t0.data})}
     if(a=='back'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;return teacher()}
