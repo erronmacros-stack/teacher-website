@@ -147,7 +147,10 @@ async function api(path,{method='GET',body,prefer}={}){
   const t=await r.text();let d;try{d=JSON.parse(t)}catch{d=t}
   if(!r.ok){if(r.status==401&&TOK){delete sessionStorage.tk;TOK=null}throw new Error((d&&(d.message||d.msg||d.error_description))||r.status)}
   return d}
-const qEnd=s=>{const d=s.tests?.data||{},q=d.qsecs||0,st=s.started_at?+new Date(s.started_at):0;if(s.status!='quiz'||!q)return 0;return(s.quiz_at?+new Date(s.quiz_at):st+(d.secs||0)*1000)+(q+(s.extra_secs||0))*1000};
+const qStart=s=>{const d=s.tests?.data||{},sec=d.secs||0,st=s.started_at?+new Date(s.started_at):0;return s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+sec*1000):(s.status=='show'&&sec>0&&st?st+sec*1000:0)};
+const qEnd=s=>{const q=s.tests?.data?.qsecs||0,b=qStart(s);return b&&q?b+(q+(s.extra_secs||0))*1000:0};
+const PL={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',late:'Час вийшов',done:'Завершено'};
+const phase=s=>{if(s.status=='wait'||s.status=='done')return s.status;const b=qStart(s),e=qEnd(s),n=Date.now();if(s.status=='show'&&(!b||n<b))return'show';return e&&n>e?'late':'quiz'};
 const AE=new Set();function autoEnd(){S.forEach(s=>{const e=qEnd(s);if(e&&Date.now()>e+90000&&!AE.has(s.id)){AE.add(s.id);api('/rest/v1/sessions?id=eq.'+s.id,{method:'PATCH',body:{status:'done',ended_at:new Date(e).toISOString()}}).then(()=>load()).catch(()=>{})}})}
 const ST={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',done:'Завершено'};
 const defScale=()=>Array.from({length:12},(_,i)=>+(((i+.5)/12*100).toFixed(1)));
@@ -288,7 +291,7 @@ function render(){
 function info(s){const A=s.attempts,D=A.filter(a=>a.finished_at),d=s.tests?.data||{},sc=d.scale,qs=d.qs||[];
   return{A,D,d,qs,sc,avg:D.length?D.reduce((x,a)=>x+grade(a.score,a.total,sc),0)/D.length:null,
     pct:D.length?Math.round(D.reduce((x,a)=>x+a.score/a.total,0)/D.length*100):null}}
-const chip=s=>`<span class="chip ${s.status=='wait'?'w':s.status=='show'?'s':''}">${s.status=='quiz'&&qEnd(s)&&Date.now()>qEnd(s)?'Час вийшов':ST[s.status]}</span>`;
+const chip=s=>`<span class="chip ${s.status=='wait'?'w':s.status=='show'?'s':''}">${PL[phase(s)]}</span>`;
 const hdr=(t,sub)=>`<div class="top"><div><h1>${t}</h1><p class="mut" style="margin:4px 0 0">${sub}</p></div><div><button class="pri" data-a="edit" data-id="">Створити тест</button><button data-a="imp">Імпорт JSON</button></div></div>`;
 const srow=s=>{const i=info(s);return`<div class="srow" role="button" tabindex="0" data-a="open" data-id="${s.id}"><span class="ico">${ic(i.d.type=='audio'?'audio':'book')}</span>
   <div><b>${esc(s.tests?.title||'Без назви')}</b><div class="mut sm">${i.A.length} учн., ${i.qs.length} запитань, ${fmt(s.created_at)}</div></div>${chip(s)}
@@ -332,7 +335,7 @@ function detail(){
   else if(TAB=='an')body=i.D.length?`<div class="card">${analysis(i.qs,i.D)}</div>`:'<div class="card"><p class="mut">Розбір з’явиться, щойно хтось здасть тест.</p></div>';
   else body=`<div class="card"><span class="mut sm">Код заняття</span><button class="code cpc" data-a="copy" data-v="${s.code}" data-m="Код скопійовано" aria-label="Скопіювати код заняття ${s.code}" title="Натисніть, щоб скопіювати">${s.code}</button>
     <div class="mut sm" style="margin-top:10px">Посилання для учнів. Натисніть, щоб скопіювати:</div><button class="lnkbox" data-a="copy" data-v="${link}" data-m="Посилання скопійовано" aria-label="Скопіювати посилання для учнів"><span>${link}</span>${ic('copy')}</button><button class="pri" data-a="pj" data-id="${s.id}">На проєктор: великий код і QR</button>${navigator.share?`<button data-a="share" data-v="${link}" data-t="${esc(s.tests?.title||'Тест')}">Поділитися</button>`:''}
-    <p style="margin-top:12px">${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${s.status=='show'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}${s.status=='done'?`<button class="pri" data-a="reopen" data-id="${s.id}">Відкрити тест знову</button> <span class="mut sm">для тих, хто запізнився або мав збій</span>`:''}</p>
+    <p style="margin-top:12px">${s.status=='wait'?`<button class="pri" data-a="st" data-id="${s.id}" data-v="show">Почати показ</button>`:''}${phase(s)=='show'?`<button class="pri" title="Закінчити показ матеріалу й одразу відкрити питання. Таймер тесту піде з цього моменту." data-a="st" data-id="${s.id}" data-v="quiz">Відкрити тест зараз</button>`:''}${['show','quiz'].includes(s.status)?`<button data-a="st" data-id="${s.id}" data-v="done">Завершити</button>`:''}${s.status=='done'||phase(s)=='late'?`<button class="pri" data-a="reopen" data-id="${s.id}">Відкрити тест знову</button> <span class="mut sm">для тих, хто запізнився або мав збій</span>`:''}</p>
     <p class="mut sm">Приєднання після старту: <b>${s.late_ok?'дозволено':'закрито'}</b> <button data-a="late" data-id="${s.id}" data-v="${s.late_ok}">${s.late_ok?'Закрити':'Дозволити'}</button></p>
     <p><button data-a="as" data-id="${s.id}">${ASET().has(''+s.id)?'Відновити з архіву':'В архів'}</button><button class="danger" data-a="ds" data-id="${s.id}">Видалити заняття</button></p></div>`;
   return`<button class="lnk" data-a="nav" data-v="${PREV}">← Назад</button>
