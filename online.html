@@ -91,11 +91,13 @@ button:disabled{opacity:.5;cursor:default}
 <body>
 <div id="app"></div>
 <script>
+const _er=m=>{const a=document.getElementById('app');if(a&&!a.innerHTML.trim())a.innerHTML='<pre style="padding:16px;margin:0;color:#b3392f;white-space:pre-wrap;font:14px/1.4 system-ui">Не вдалося запустити сторінку.\n'+String(m).replace(/</g,'&lt;')+'</pre>'};
+addEventListener('error',e=>_er(e.message+(e.lineno?' (рядок '+e.lineno+')':'')));addEventListener('unhandledrejection',e=>_er(e.reason&&e.reason.message||e.reason));
 const URL_='https://nyilajegoqdhujnvhsoe.supabase.co',KEY_='sb_publishable_HgNdf6MvwSLU4_7r5a-vrA_KKUvR9aw';
 const $=s=>document.querySelector(s),view=h=>$('#app').innerHTML=h;
 const esc=s=>String(s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const sh=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.random()*(i+1)|0;[a[i],a[j]]=[a[j],a[i]]}return a};
-let TOK=sessionStorage.tk||null;
+let TOK=(()=>{try{return sessionStorage.tk}catch{return null}})()||null;
 async function api(path,{method='GET',body,prefer}={}){
   const h={apikey:KEY_,'Content-Type':'application/json'};if(TOK)h.Authorization='Bearer '+TOK;if(prefer)h.Prefer=prefer;
   const r=await fetch(URL_+path,{method,headers:h,body:body&&JSON.stringify(body)});
