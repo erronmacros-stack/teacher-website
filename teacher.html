@@ -383,3 +383,161 @@ function edit(id){
   E=t?{id:t.id,title:t.title,tags:(t.data.tags||[]).join(', '),type:t.data.noMat?'none':(t.data.type||'text'),plays:t.data.plays||2,scale:t.data.scale||null,audio:t.data.type=='audio'?'keep':null,hadAudio:t.data.type=='audio',fname:'',text:t.data.text,secs:t.data.secs||0,qsecs:t.data.qsecs||0,qs:t.data.qs.map(toEd),shuf:t.data.shuf!==false,notes:t.data.notes||'',archived:!!t.data.archived}
      :{id:null,title:'',tags:'',type:'text',plays:2,scale:null,audio:null,hadAudio:false,fname:'',text:'',secs:60,qsecs:0,qs:[blank()],shuf:true,notes:'',archived:false};
   draw();scrollTo(0,0);
+}
+function draw(){
+  const y=scrollY,ae=document.activeElement,fk=ae&&(ae.id?'#'+ae.id:ae.dataset&&ae.dataset.ty!=null?`[data-ty="${ae.dataset.ty}"]`:ae.dataset&&ae.dataset.f?`[data-f="${ae.dataset.f}"]`:''),au=E.type=='audio';
+  view(`<div class="shell">${side('tests')}<main class="main ed">
+  <div class="ed-head"><div class="ed-ttl"><span class="ed-ico">${ic('doc')}</span><div><h1>${E.id?'Редагування тесту':'Новий тест'}</h1><p class="mut" style="margin:2px 0 0">Створіть або відредагуйте тест, заповнивши всі необхідні поля.</p></div></div>
+    <div class="ed-acts"><button class="bt" data-a="back">Скасувати</button><button class="bt pri" data-a="save">${ic('save')}Зберегти тест</button></div></div>
+  <section class="ed-card"><h2 class="ed-h">Основна інформація</h2><div class="ed-grid"><div>
+    <label class="fl">Назва тесту <span class="req" aria-hidden="true">*</span><input type="text" data-f="title" maxlength="100" value="${esc(E.title)}" placeholder="Введіть назву тесту"></label><div class="cnt" id="tc" aria-hidden="true">${E.title.length}/100</div>
+    <label class="fl">Тип матеріалу${sel('data-f="type"',`<option value="text" ${E.type=='text'?'selected':''}>Текст</option><option value="audio" ${E.type=='audio'?'selected':''}>Аудіо</option><option value="none" ${E.type=='none'?'selected':''}>Без матеріалу (лише питання)</option>`)}</label>
+    ${au?`<div class="fl-t">Аудіофайл <span class="req" aria-hidden="true">*</span></div><div class="dropw"><label class="drop"><input type="file" id="af" accept="audio/*" class="vh">${ic('upload')}<span><b>${E.fname?'Обрано: '+esc(E.fname):E.audio=='keep'?'Збережений файл залишиться':'Додати аудіофайл'}</b><small>${E.audio=='keep'&&!E.fname?'Оберіть інший файл, щоб замінити':'Підтримується mp3, до 4 МБ. Можна перетягнути сюди'}</small></span></label>${E.fname?`<button class="dx" data-a="clrfile" aria-label="Прибрати обраний файл">${ic('x')}</button>`:''}</div>
+    <label class="fl">Скільки разів прослухати<input type="number" min="1" max="5" data-f="plays" value="${E.plays}"></label>`:E.type=='none'?'':`<label class="fl">Текст <span class="req" aria-hidden="true">*</span><small class="fmt">Форматування: **жирний**, *курсив*, порожній рядок для нового абзацу, «> » на початку рядка для цитати.</small><textarea data-f="text" rows="8" placeholder="Введіть текст матеріалу…">${esc(E.text)}</textarea></label>`}
+    <div class="ed-two">${E.type=='none'?'':`<label class="fl">Час на показ матеріалу, с <span class="mut hint">(0 — до моєї кнопки)</span><input type="number" min="0" data-f="secs" value="${E.secs}"></label>`}
+    <label class="fl">Час на тест, с <span class="mut hint">(0 — без ліміту)</span><input type="number" min="0" data-f="qsecs" value="${E.qsecs}"></label></div>
+  </div><div>
+    <label class="fl">Теги <span class="mut hint">(через кому)</span><input type="text" data-f="tags" value="${esc(E.tags||'')}" placeholder="7 клас, Українська література"></label>
+    ${chk('id="sc"',!!E.scale,'Власна шкала оцінювання',E.scale?'Мінімальний відсоток правильних відповідей для кожної оцінки.':'Зараз діє лінійна шкала: відсоток правильних × 12, з округленням.')}
+    ${E.scale?`<div class="scale">${E.scale.map((v,i)=>`<label>${i+1}<input type="number" min="0" max="100" step="0.1" data-s="${i}" value="${v}"></label>`).join('')}</div>`:''}
+    ${chk('id="shf"',E.shuf,'Випадковий порядок варіантів','Учні бачать варіанти в різному порядку. Вимкніть, якщо є «Усі відповіді правильні» чи числові діапазони.')}
+    <div class="ed-box" id="qsum">${sum()}</div>
+  </div></div></section>
+  <section class="ed-card"><h2 class="ed-h">Нотатки для вчителя</h2><label class="fl"><span class="mut hint">Бачите тільки ви, учні цього не отримують.</span><textarea data-f="notes" rows="4" placeholder="Джерело тексту, клас, методичні вказівки, на що звернути увагу під час обговорення…">${esc(E.notes||'')}</textarea></label></section>
+  ${E.imp?`<section class="ed-card"><h2 class="ed-h">Імпорт питань з тексту</h2><p class="mut sm" style="margin-top:-10px">Вставте текст із Word чи Telegram. Підтримуються заголовки («## Питання 1», «1.», «1)»), варіанти «А)», «а.» чи «- [x]», правильний із «+» в кінці, рядок «Відповідь: б» або ключ у кінці тексту («Ключ до відповідей»). Таблиці співставлення та питання без варіантів (коротка відповідь) теж розпізнаються.</p><textarea id="imp" rows="10" placeholder="1. Столицею України є:\nа) Львів\nб) Київ+\nв) Одеса"></textarea><div class="ed-acts" style="margin-top:12px"><button class="bt pri" data-a="impgo">Розпізнати й додати</button><button class="bt" data-a="impt">Закрити</button></div></section>`:''}
+  ${E.qs.map(qEd).join('')}
+  <div class="addrow"><b>Додати питання:</b>${[['single','Одна відповідь'],['multi','Кілька відповідей'],['short','Коротка відповідь'],['match','Співставлення']].map(([k,l])=>`<button class="bt ghost" data-a="addq" data-v="${k}">${ic('plus')}${l}</button>`).join('')}<button class="bt" data-a="impt">${ic('doc')}Імпорт з тексту</button></div>
+  <div class="ed-foot"><button class="bt pri" data-a="save">${ic('save')}Зберегти тест</button><button class="bt" data-a="prev">${ic('doc')}Спробувати як учень</button><button class="bt" data-a="printe">${ic('doc')}Версія для друку</button><button class="bt" data-a="back">${ic('back')}Назад без збереження</button></div>
+  </main></div>`);
+  scrollTo(0,y);if(fk){const n=document.querySelector(fk);if(n)n.focus({preventScroll:true})}
+}
+document.addEventListener('dragover',e=>{const z=e.target.closest&&e.target.closest('.drop');if(z){e.preventDefault();z.classList.add('over')}});
+document.addEventListener('dragleave',e=>{const z=e.target.closest&&e.target.closest('.drop');if(z)z.classList.remove('over')});
+document.addEventListener('drop',e=>{const z=e.target.closest&&e.target.closest('.drop');if(!z)return;e.preventDefault();const i=$('#af');if(i&&e.dataTransfer.files.length){i.files=e.dataTransfer.files;i.dispatchEvent(new Event('change',{bubbles:true}))}});
+document.addEventListener('input',e=>{if(!E)return;const t=e.target,d=t.dataset;
+  if(d.f)E[d.f]=t.type=='number'?+t.value:t.value;
+  else if(d.s!=null)E.scale[d.s]=+t.value;
+  else if(d.ex!=null)E.qs[d.ex].expl=t.value;
+  else if(d.pa!=null)E.qs[d.pa].partial=t.checked;
+  else if(d.ac!=null)E.qs[d.ac].a=t.value;
+  else if(d.cs!=null)E.qs[d.cs].cs=t.checked;
+  else if(d.p){const[i,k,side]=d.p.split(':');E.qs[i].pairs[k][side]=t.value}
+  else if(d.q!=null)E.qs[d.q].q=t.value;
+  else if(d.o){const[i,j]=d.o.split(':');E.qs[i].o[j]=t.value}
+  else if(d.c!=null){const q=E.qs[d.c],v=+t.value;if(t.type=='checkbox')q.c=t.checked?[...new Set([...q.c,v])]:q.c.filter(z=>z!==v);else q.c=v}
+  if(d.f=='title'){const c=$('#tc');if(c)c.textContent=t.value.length+'/100'}E.dirty=true;updSum()});
+
+/* ---------- дії ---------- */
+document.addEventListener('click',async e=>{
+  const b=e.target.closest('[data-a]');if(!b)return;const{a,id,v,i,k}=b.dataset,now=new Date().toISOString();
+  try{
+    if(E&&['addq','addp','addo','delq','delp','clrfile','dupq','delo','impgo'].includes(a))E.dirty=true;
+    if(a=='nav'){if(E){if(E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;V=v;return teacher()}V=v;render();return}
+    if(a=='out'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;delete sessionStorage.tk;location.reload();return}
+    if(a=='goq'){const el=document.getElementById('q'+i);if(el){el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});const f=el.querySelector('textarea,input,select');if(f)f.focus({preventScroll:true})}return}
+    if(a=='clrfile'){E.audio=E.hadAudio?'keep':null;E.fname='';return draw()}
+    if(a=='tab'){TAB=v;render();return}
+    if(a=='open'){if(V!='detail')PREV=V;SEL=id;TAB='res';V='detail';render();window.scrollTo(0,0);return}
+    if(a=='imp'){$('#f').click();return}
+    if(a=='copy'){await copyTxt(v);toast(b.dataset.m||'Скопійовано');return}
+    if(a=='share'){try{await navigator.share({title:b.dataset.t,url:v})}catch(x){}return}
+    if(a=='pj'){PJ=id;drawPJ();document.documentElement.requestFullscreen?.().catch(()=>{});return}
+    if(a=='pjx'){PJ=null;drawPJ();if(document.fullscreenElement)document.exitFullscreen();return}
+    if(a=='plus'){const s0=S.find(x=>x.id==id);await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{extra_secs:(s0.extra_secs||0)+v*60}});load();return}
+    if(a=='dup'){const t=T.find(x=>x.id==id);let au=null;
+      if(t.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');au=f[0]||null}
+      await saveTest({title:t.title+' (копія)',data:t.data,audio:au});load();return}
+    if(a=='pdf'){report(S.find(x=>x.id==id));return}
+    if(a=='rpprint'){print();return}
+    if(a=='rpx'){const r=$('#RP');if(r)r.remove();return}
+    if(a=='tag'){TAGF=v;render();return}
+    if(a=='archv'){ARCH=!ARCH;render();return}
+    if(a=='archs'){SARCH=!SARCH;render();return}
+    if(a=='arch'){const t=T.find(x=>x.id==id),d={...t.data};if(d.archived){delete d.archived}else d.archived=true;await api('/rest/v1/tests?id=eq.'+id,{method:'PATCH',body:{data:d}});toast(d.archived?'Тест перенесено в архів':'Тест відновлено');load();return}
+    if(a=='as'){const A=ASET();let on;if(A.has(id)){A.delete(id);on=0}else{A.add(id);on=1}ASAVE(A);toast(on?'Заняття перенесено в архів':'Заняття відновлено');V=PREV;SEL=null;render();return}
+    if(a=='expall'){const au=await api('/rest/v1/audio_files?select=test_id,mime,data'),M={};au.forEach(f=>M[f.test_id]=f);
+      const out={app:'reading-test',v:1,tests:T.map(t=>({title:t.title,...t.data,...(M[t.id]?{audio:{mime:M[t.id].mime,data:M[t.id].data}}:{})}))},l=document.createElement('a');
+      l.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));l.download='tests-backup-'+new Date().toISOString().slice(0,10)+'.json';l.click();toast('Збережено тестів: '+T.length);return}
+    if(a=='sela'){const k=''+id;if(SELA.has(k))SELA.delete(k);else SELA.add(k);render();return}
+    if(a=='selall'){const s0=S.find(x=>x.id==id),ids=s0.attempts.map(x=>''+x.id);if(ids.every(k=>SELA.has(k)))ids.forEach(k=>SELA.delete(k));else ids.forEach(k=>SELA.add(k));render();return}
+    if(a=='bulk'){const s0=S.find(x=>x.id==id),ids=s0.attempts.map(x=>x.id).filter(k=>SELA.has(''+k));if(!ids.length)return;
+      if(!confirm('Скинути спроби обраних учнів ('+ids.length+')? Вони зможуть пройти тест заново (за умови, що приєднання дозволене). Якщо результати ще потрібні, спершу завантажте таблицю.'))return;
+      await api('/rest/v1/attempts?id=in.('+ids.join(',')+')',{method:'DELETE'});ids.forEach(k=>SELA.delete(''+k));toast('Скинуто спроб: '+ids.length);load();return}
+    if(a=='prev'||a=='prevt'){let o;if(a=='prev')o=clean(E);else{const t0=T.find(x=>x.id==id);o={title:t0.title,data:t0.data}}
+      localStorage['rt-preview']=JSON.stringify({title:o.title,data:o.data});
+      const w=window.open(location.pathname.replace(/[^/]*$/,'')+'online.html?preview=1','_blank');
+      if(!w)alert('Браузер заблокував нове вікно. Дозвольте спливні вікна для цього сайту й спробуйте ще раз.');return}
+    if(a=='edit')return edit(id);
+    if(a=='addq'){E.qs.push(blank());setType(E.qs.length-1,v||'single');draw();const el=document.getElementById('q'+(E.qs.length-1));if(el)el.scrollIntoView({block:'center'});return}
+    if(a=='addp'){E.qs[i].pairs.push({l:'',r:''});return draw()}
+    if(a=='delp'){E.qs[i].pairs.splice(+k,1);return draw()}
+    if(a=='addo'){if(E.qs[i].o.length<8)E.qs[i].o.push('');return draw()}
+    if(a=='delq'){E.qs.splice(i,1);return draw()}
+    if(a=='dupq'){E.qs.splice(+i+1,0,JSON.parse(JSON.stringify(E.qs[i])));draw();const el=document.getElementById('q'+(+i+1));if(el)el.scrollIntoView({block:'center'});return}
+    if(a=='delo'){const q=E.qs[i],j=+k;q.o.splice(j,1);if(q.type=='multi')q.c=q.c.filter(z=>z!==j).map(z=>z>j?z-1:z);else q.c=q.c==j?-1:(q.c>j?q.c-1:q.c);return draw()}
+    if(a=='impt'){E.imp=!E.imp;return draw()}
+    if(a=='impgo'){const L=parseQs($('#imp').value);if(!L.length){alert('Не вдалося розпізнати питання. Перевірте нумерацію («1.») і літери варіантів («а)»).');return}
+      if(E.qs.length==1&&!E.qs[0].q.trim()&&E.qs[0].o?.every(x=>!x))E.qs=[];E.qs.push(...L);E.imp=false;draw();const bad=L.filter(x=>!cq(x)).length;toast('Додано питань: '+L.length+(bad?'. Потребують уваги: '+bad+' (позначені «!»)':''));return}
+    if(a=='printe')return printTest(clean(E));
+    if(a=='printt'){const t0=T.find(x=>x.id==id);return printTest({title:t0.title,data:t0.data})}
+    if(a=='back'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;return teacher()}
+    if(a=='save'){const o=clean(E);if(o.data.qs.length<E.qs.length&&!confirm('Деякі питання неповні (потрібні текст, відповіді та позначена правильна) і не будуть збережені. Зберегти без них?'))return;await saveTest(o,E.id);return teacher()}
+    if(a=='new'||a=='fast'){let sid;for(let k=0;k<5;k++){try{const r=await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=representation'});sid=r[0].id;break}catch(x){if(k==4)throw x}}PREV=a=='fast'?'tests':'sessions';SEL=sid;TAB='ctl';V='detail';if(a=='fast'){PJ=sid;document.documentElement.requestFullscreen?.().catch(()=>{})}}
+    else if(a=='st')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:v=='show'?{status:v,started_at:now}:v=='quiz'?{status:v,quiz_at:now}:{status:v,ended_at:now}});
+    else if(a=='exp'){const t=T.find(x=>x.id==id),l=document.createElement('a'),ex={title:t.title,...t.data};
+      if(t.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');ex.audio=f[0]}
+      l.href=URL.createObjectURL(new Blob([JSON.stringify(ex,null,1)],{type:'application/json'}));
+      l.download=t.title.replace(/[^\p{L}\p{N}]+/gu,'_')+'.json';l.click()}
+    else if(a=='rev')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{reveal:v!='true'}});
+    else if(a=='late')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{late_ok:v!='true'}});
+    else if(a=='dt'){if(!confirm('Видалити тест разом з усіма його заняттями та результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/tests?id=eq.'+id,{method:'DELETE'})}
+    else if(a=='ds'){if(!confirm('Видалити заняття разом з результатами? Спершу завантажте таблицю.'))return;await api('/rest/v1/sessions?id=eq.'+id,{method:'DELETE'});V=PREV;SEL=null}
+    else if(a=='da'){if(!confirm('Скинути спробу? Учень зможе пройти тест заново (за умови, що приєднання дозволене).'))return;await api('/rest/v1/attempts?id=eq.'+id,{method:'DELETE'})}
+    else if(a=='csv'){const s=S.find(x=>x.id==id),q=x=>'"'+String(x).replace(/"/g,'""')+'"';
+      const rows=[['Учень','Бал','З','Оцінка (12)','Виходи з вкладки'],...s.attempts.map(t=>[t.name,t.finished_at?t.score:'',t.finished_at?t.total:'',t.finished_at?grade(t.score,t.total,s.tests?.data?.scale):'',t.leaves])];
+      const l=document.createElement('a');l.href=URL.createObjectURL(new Blob(['\ufeff'+rows.map(r=>r.map(q).join(';')).join('\r\n')],{type:'text/csv'}));l.download='results-'+s.code+'.csv';l.click()}
+    load();
+  }catch(x){alert(x.message)}
+});
+function report(s){
+  const i=info(s),qs=i.qs,rows=i.A.slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  const mark=(a,k)=>{if(!a.finished_at)return'<td class="m sk">–</td>';const v=a.answers?.[k];if(v==null)return'<td class="m sk">–</td>';const pt=qpts(qs[k],v);return pt>=1?'<td class="m ok">✓</td>':pt>0?'<td class="m ok">±</td>':'<td class="m bad">✕</td>'};
+  const pc=qs.map((q,k)=>i.D.length?Math.round(i.D.reduce((x,a)=>x+qpts(q,a.answers?.[k]),0)/i.D.length*100)+'%':'—');
+  let el=$('#RP');if(!el){el=document.createElement('div');el.id='RP';el.className='rp';document.body.appendChild(el)}
+  el.innerHTML=`<div class="rpb noprint"><button class="pri" data-a="rpprint">Зберегти як PDF або надрукувати</button><button data-a="rpx">Закрити</button><span class="mut sm">У вікні друку оберіть «Зберегти як PDF». Орієнтація сторінки вже альбомна.</span></div>
+  <div class="rpd"><div class="row"><div><b style="font-size:1.1rem;color:#0f6b52">Читання й тест</b> <span style="color:#5f6f68;font-size:.88rem">Українська мова та література</span></div><span style="color:#5f6f68;font-size:.88rem">Звіт сформовано ${fmt(new Date())}</span></div>
+  <h1 style="margin:14px 0 4px">Результати тесту</h1><p style="margin:0 0 12px;font-size:1.05rem;color:#5f6f68">${esc(s.tests?.title||'')}, заняття від ${fmt(s.created_at)}, код ${s.code}</p>
+  <div class="rps"><div><span>Учнів</span><b>${rows.length}</b></div><div><span>Здали роботу</span><b>${i.D.length}</b></div><div><span>Середня оцінка</span><b>${i.avg==null?'—':i.avg.toFixed(1)} / 12</b></div><div><span>Правильних відповідей</span><b>${i.pct==null?'—':i.pct+'%'}</b></div></div>
+  <table class="rpt"><thead><tr><th>№</th><th class="l">Учень</th><th>Бал</th><th>Оцінка (12)</th><th>Виходи</th>${qs.map((q,k)=>`<th>${k+1}</th>`).join('')}</tr></thead><tbody>
+  ${rows.map((a,n)=>`<tr><td>${n+1}</td><td class="l">${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td><b>${a.finished_at?grade(a.score,a.total,i.sc):'—'}</b></td><td>${a.leaves}</td>${qs.map((q,k)=>mark(a,k)).join('')}</tr>`).join('')||'<tr><td colspan="5">Ніхто не приєднався.</td></tr>'}
+  </tbody><tfoot><tr><td></td><td class="l">Правильних, %</td><td></td><td></td><td></td>${pc.map(p=>`<td>${p}</td>`).join('')}</tr></tfoot></table>
+  <p style="color:#5f6f68;font-size:.85rem;margin-bottom:0">✓ правильно, ± частково, ✕ неправильно, – немає відповіді. Номери стовпців відповідають порядку питань у тесті.</p></div>`;
+  el.scrollTop=0}
+let PJ=null;
+function drawPJ(){
+  let el=$('#PJ');const s=PJ&&S.find(x=>x.id==PJ);
+  if(!s){if(el)el.remove();PJ=null;return}
+  if(!el){el=document.createElement('div');el.id='PJ';el.className='pj';document.body.appendChild(el)}
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html',i=info(s);
+  let qr='';try{const q=qrcode(0,'M');q.addData(base+'?c='+s.code);q.make();qr=q.createSvgTag({cellSize:6,margin:2,scalable:true})}catch(e){}
+  el.innerHTML=`<button data-a="pjx" style="position:absolute;top:16px;right:16px">Закрити (Esc)</button><div class="pjc">
+    <p class="mut" style="font-size:1.4rem;margin:0">Щоб приєднатися, скануйте QR-код або відкрийте сторінку</p>
+    <p style="font-size:clamp(1rem,2.4vw,1.8rem);margin:6px 0 22px;word-break:break-all"><b>${esc(base)}</b></p>
+    <div class="pjg"><div class="qrb">${qr}</div><div><div class="mut" style="font-size:1.3rem">Код заняття</div><div class="pjcode">${s.code}</div></div></div>
+    <p style="font-size:1.7rem;margin-top:24px">Приєдналися: <b>${i.A.length}</b>${i.D.length?`, здали: <b>${i.D.length}</b>`:''}</p></div>`}
+function tmr(s,i){
+  const secs=i.d.secs||0,qs=i.d.qsecs||0,st=s.started_at?+new Date(s.started_at):0;
+  if(s.status=='show'&&st&&secs>0&&Date.now()<st+secs*1000)return`<div class="mut sm" style="margin-top:6px">Показ матеріалу: залишилось <b class="cdn" data-end="${st+secs*1000}"></b></div>`;
+  const qst=s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+secs*1000):(s.status=='show'&&secs>0&&st?st+secs*1000:0);
+  if(!qs||!qst)return'';
+  const end=qst+(qs+(s.extra_secs||0))*1000;if(Date.now()>end)return'';
+  return`<div class="mut sm" style="margin-top:6px">Тест: залишилось <b class="cdn" data-end="${end}"></b> <button data-a="plus" data-id="${s.id}" data-v="1">+1 хв</button><button data-a="plus" data-id="${s.id}" data-v="5">+5 хв</button></div>`}
+function tickCd(){document.querySelectorAll('.cdn').forEach(e=>{const r=Math.max(0,Math.ceil((+e.dataset.end-Date.now())/1000));e.textContent=String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0')})}
+setInterval(tickCd,1000);
+document.addEventListener('input',e=>{if(e.target.id=='sq'){QRY=e.target.value;$('#tl').innerHTML=trows()}});
+document.addEventListener('keydown',e=>{if(e.key=='Escape'){if($('#RP'))$('#RP').remove();else if(PJ){PJ=null;drawPJ()}}});
+document.addEventListener('keydown',e=>{if((e.key=='Enter'||e.key==' ')&&e.target.matches&&e.target.matches('[role=button]')){e.preventDefault();e.target.click()}});
+teacher();
+</script>
+</body>
+</html>
