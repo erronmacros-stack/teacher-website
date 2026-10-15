@@ -262,7 +262,7 @@ function clean(j){
   if(au&&!j.audio)throw new Error('Додайте аудіофайл.');
   const sc=j.scale;if(sc&&(!Array.isArray(sc)||sc.length!=12||sc.some((v,i)=>!(v>=0&&v<=100)||(i&&v<sc[i-1]))))throw new Error('Шкала оцінювання: 12 значень від 0 до 100, кожне не менше попереднього.');
   if(!qs.length)throw new Error('Потрібне хоча б одне питання з двома варіантами та позначеною правильною відповіддю.');
-  return{title:j.title.trim(),data:{type:au?'audio':'text',text:au||no?'':j.text,plays:Math.min(5,Math.max(1,+j.plays||2)),secs:no?1:Math.max(0,+j.secs||0),qsecs:Math.max(0,Math.round(j.qmin!=null&&j.qmin!==''?+j.qmin*60:+j.qsecs)||0),qs,...(no?{noMat:true}:{}),...(sc?{scale:sc.map(Number)}:{}),...(tgs(j.tags).length?{tags:tgs(j.tags)}:{}),...(j.shuf===false?{shuf:false}:{}),...(String(j.notes||'').trim()?{notes:String(j.notes).trim()}:{}),...(j.archived?{archived:true}:{})},audio:j.audio||null}}
+  return{title:j.title.trim(),data:{type:au?'audio':'text',text:au||no?'':j.text,plays:Math.min(5,Math.max(1,+j.plays||2)),secs:no?1:Math.max(0,+j.secs||0),qsecs:Math.max(0,Math.round(j.qmin!=null&&j.qmin!==''?+j.qmin*60:+j.qsecs)||0),qs,...(no?{noMat:true}:{}),...(sc?{scale:sc.map(Number)}:{}),...(tgs(j.tags).length?{tags:tgs(j.tags)}:{}),...(j.shuf===false?{shuf:false}:{}),...(String(j.notes||'').trim()?{notes:String(j.notes).trim()}:{}),...(j.archived?{archived:true}:{}),...(j.ovr&&Object.keys(j.ovr).length?{ovr:j.ovr}:{})},audio:j.audio||null}}
 async function saveTest(o,id){
   const{audio,...body}=o;
   if(id)await api('/rest/v1/tests?id=eq.'+id,{method:'PATCH',body});
@@ -273,13 +273,13 @@ async function saveTest(o,id){
 async function load(){
   try{
     [T,S]=await Promise.all([api('/rest/v1/tests?select=id,title,data&order=created_at.desc'),
-      api('/rest/v1/sessions?select=id,code,status,late_ok,reveal,started_at,quiz_at,extra_secs,created_at,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);autoEnd();
+      api('/rest/v1/sessions?select=id,test_id,code,status,late_ok,reveal,started_at,quiz_at,extra_secs,created_at,tests(title,data),attempts(id,name,score,total,leaves,finished_at,answers)&order=created_at.desc')]);ovrApply();autoEnd();
     render();
   }catch(e){if(!TOK)teacher();else if($('#M'))$('#M').innerHTML='<p class="err">Помилка: '+esc(e.message)+'</p>'}
 }
 function render(){
   if(E||!$('#M'))return;
-  if(document.activeElement&&document.activeElement.id=='sq')return;
+  if(document.activeElement&&['sq','rq'].includes(document.activeElement.id))return;
   const cur=V=='detail'?PREV:V;
   document.querySelectorAll('.nv[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v==cur));
   $('#M').innerHTML=V=='tests'?testsV():V=='sessions'?sessionsV():V=='detail'?detail():V=='help'?helpV():home();
@@ -305,7 +305,7 @@ function home(){
    <div class="row"><h2 style="margin:0">Останні заняття</h2><button class="lnk" style="margin:0" data-a="nav" data-v="sessions">Усі заняття →</button></div>
    <div class="card" style="margin-top:8px">${S.filter(s=>!ASET().has(''+s.id)).slice(0,4).map(srow).join('')||empty}</div>`}
 const sessionsV=()=>{const A=ASET(),L=S.filter(s=>A.has(''+s.id)==SARCH);return hdr('Заняття','Усі запуски тестів. Оберіть заняття, щоб побачити результати.')+`<div class="row" style="margin-bottom:10px"><span></span><button data-a="archs">${SARCH?'← До активних занять':'Архів ('+S.filter(s=>A.has(''+s.id)).length+')'}</button></div><div class="card">${L.map(srow).join('')||(SARCH?'<p class="mut" style="padding:8px 4px">Архів порожній.</p>':empty)}</div>`};
-let QRY='',TAGF='',ARCH=false,SARCH=false,SELA=new Set();const ASET=()=>{try{return new Set(JSON.parse(localStorage['arch-s']||'[]'))}catch{return new Set()}},ASAVE=s=>{try{localStorage['arch-s']=JSON.stringify([...s])}catch{}};
+let RQ='',RPS=null,QRY='',TAGF='',ARCH=false,SARCH=false,SELA=new Set();const ASET=()=>{try{return new Set(JSON.parse(localStorage['arch-s']||'[]'))}catch{return new Set()}},ASAVE=s=>{try{localStorage['arch-s']=JSON.stringify([...s])}catch{}};
 const tagBar=()=>{const all=[...new Set(T.flatMap(t=>t.data.tags||[]))].sort((a,b)=>a.localeCompare(b,'uk'));return all.length?`<div style="margin-bottom:10px">${['',...all].map(g=>`<button class="tc${TAGF==g?' on':''}" data-a="tag" data-v="${esc(g)}">${g?esc(g):'Усі'}</button>`).join('')}</div>`:''};
 const trows=()=>{const q=QRY.trim().toLowerCase(),L=T.filter(t=>(!q||t.title.toLowerCase().includes(q))&&(!TAGF||(t.data.tags||[]).includes(TAGF))&&!!t.data.archived==ARCH);
   return L.map(t=>{const d=t.data;return`<div class="trow"><span class="ico">${ic(d.type=='audio'?'audio':'doc')}</span><div><b>${esc(t.title)}</b><div class="mut sm">${d.noMat?'Без матеріалу':d.type=='audio'?'Аудіо':'Текст'}, ${d.qs.length} запитань</div>${(d.tags||[]).map(g=>`<span class="chip w" style="margin:4px 4px 0 0">${esc(g)}</span>`).join('')}</div>
@@ -328,7 +328,7 @@ function detail(){
   const i=info(s),A=i.A,link=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html?c='+s.code;
   const mini=(l,v,u)=>`<div class="card"><span class="mut sm">${l}</span><div><span class="num">${v}</span> <span class="mut">${u||''}</span></div></div>`;
   let body;
-  if(TAB=='res')body=`<div class="row" style="margin-bottom:8px"><span class="mut sm">Завантажити результати:</span><span><button data-a="pdf" data-id="${s.id}">PDF (для друку)</button><button data-a="csv" data-id="${s.id}">Excel (.csv)</button></span></div>${A.length?`<div class="row" style="margin-bottom:8px"><span class="mut sm">Обрано: <b>${A.filter(a=>SELA.has(''+a.id)).length}</b></span><button class="danger" data-a="bulk" data-id="${s.id}" ${A.some(a=>SELA.has(''+a.id))?'':'disabled'}>Скинути обрані спроби</button></div>`:''}<div class="card" style="overflow-x:auto"><table><tr><th><input type="checkbox" data-a="selall" data-id="${s.id}" aria-label="Обрати всіх" ${A.length&&A.every(a=>SELA.has(''+a.id))?'checked':''}></th><th>Учень</th><th>Бал</th><th>Оцінка</th><th>Виходи з вкладки</th><th></th></tr>${A.map(a=>`<tr><td><input type="checkbox" data-a="sela" data-id="${a.id}" ${SELA.has(''+a.id)?'checked':''} aria-label="Обрати: ${esc(a.name)}"></td><td>${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td>${a.finished_at?grade(a.score,a.total,i.sc):'—'}</td><td>${a.leaves}</td><td><button class="danger" data-a="da" data-id="${a.id}">Скинути</button></td></tr>`).join('')||'<tr><td colspan="6" class="mut">Ніхто ще не приєднався.</td></tr>'}</table></div>`;
+  if(TAB=='res')body=`<div class="row" style="margin-bottom:8px"><span class="mut sm">Завантажити результати:</span><span><button data-a="pdf" data-id="${s.id}">PDF (для друку)</button><button data-a="csv" data-id="${s.id}">Excel (.csv)</button></span></div>${A.length?`<input type="text" id="rq" placeholder="Пошук учня за прізвищем" value="${esc(RQ)}" autocomplete="off" style="margin:0 0 10px"><div class="row" style="margin-bottom:8px"><span class="mut sm">Обрано: <b>${A.filter(a=>SELA.has(''+a.id)).length}</b></span><button class="danger" data-a="bulk" data-id="${s.id}" ${A.some(a=>SELA.has(''+a.id))?'':'disabled'}>Скинути обрані спроби</button></div>`:''}<div class="card" style="overflow-x:auto"><table><tr><th><input type="checkbox" data-a="selall" data-id="${s.id}" aria-label="Обрати всіх" ${A.length&&A.every(a=>SELA.has(''+a.id))?'checked':''}></th><th>Учень</th><th>Бал</th><th>Оцінка</th><th>Виходи з вкладки</th><th></th></tr><tbody id="rb">${resRows(s,i)}</tbody></table></div>`;
   else if(TAB=='an')body=i.D.length?`<div class="card">${analysis(i.qs,i.D)}</div>`:'<div class="card"><p class="mut">Розбір з’явиться, щойно хтось здасть тест.</p></div>';
   else body=`<div class="card"><span class="mut sm">Код заняття</span><button class="code cpc" data-a="copy" data-v="${s.code}" data-m="Код скопійовано" aria-label="Скопіювати код заняття ${s.code}" title="Натисніть, щоб скопіювати">${s.code}</button>
     <div class="mut sm" style="margin-top:10px">Посилання для учнів. Натисніть, щоб скопіювати:</div><button class="lnkbox" data-a="copy" data-v="${link}" data-m="Посилання скопійовано" aria-label="Скопіювати посилання для учнів"><span>${link}</span>${ic('copy')}</button><button class="pri" data-a="pj" data-id="${s.id}">На проєктор: великий код і QR</button>${navigator.share?`<button data-a="share" data-v="${link}" data-t="${esc(s.tests?.title||'Тест')}">Поділитися</button>`:''}
@@ -342,16 +342,16 @@ function detail(){
    ${i.d.notes?`<div class="card sm"><b>Нотатки до тесту</b><div class="mut" style="white-space:pre-wrap;margin-top:4px">${esc(i.d.notes)}</div></div>`:''}<div class="tabs">${[['res','Результати'],['an','Розбір питань'],['ctl','Керування']].map(([k,t])=>`<button class="tab ${TAB==k?'on':''}" data-a="tab" data-v="${k}">${t}</button>`).join('')}</div>${body}`}
 const nrm=(v,cs)=>{const x=String(v??'').trim().replace(/[’ʼ`′]/g,"'").replace(/\s+/g,' ');return cs?x:x.toLowerCase()};
 const uniq=a=>JSON.stringify([...new Set(a)].sort((x,y)=>x-y));
-const qok=(q,a)=>{const t=q.type||'single';if(a==null)return false;
+const qok=(q,a)=>{const t=q.type||'single';if(a==null)return false;if(a.__ov!==undefined)return a.__ov>=1;
   if(t=='single')return String(a)===String(q.c);
   if(t=='multi')return Array.isArray(a)&&uniq(a)===uniq(q.c);
   if(t=='short')return typeof a=='string'&&q.a.some(v=>nrm(v,q.cs)===nrm(a,q.cs));
   if(t=='match')return Array.isArray(a)&&a.length==q.pairs.length&&q.pairs.every((p,k)=>a[k]===p.r);
   return false};
-const qpts=(q,a)=>{if(qok(q,a))return 1;const t=q.type||'single';if(!q.partial||a==null)return 0;
+const qpts=(q,a)=>{if(a!=null&&a.__ov!==undefined)return a.__ov;if(qok(q,a))return 1;const t=q.type||'single';if(!q.partial||a==null)return 0;
   if(t=='multi'&&Array.isArray(a)){const c=new Set(q.c),u=[...new Set(a)],g=u.filter(v=>c.has(v)).length;return Math.max(0,(g-(u.length-g))/c.size)}
   if(t=='match'&&Array.isArray(a))return q.pairs.filter((p,k)=>a[k]===p.r).length/q.pairs.length;return 0};
-const fa=(q,a)=>{const t=q.type||'single';if(a==null)return'—';
+const fa=(q,a)=>{if(a!=null&&a.__ov!==undefined)a=a.v;const t=q.type||'single';if(a==null)return'—';
   if(t=='single')return q.o[a]??'—';
   if(t=='multi')return Array.isArray(a)&&a.length?a.map(k=>q.o[k]).join('; '):'—';
   if(t=='short')return String(a)||'—';
@@ -384,8 +384,9 @@ document.addEventListener('change',async e=>{const t=e.target;
 /* ---------- редактор ---------- */
 function edit(id){
   const t=T.find(x=>x.id==id);
-  E=t?{id:t.id,title:t.title,tags:(t.data.tags||[]).join(', '),type:t.data.noMat?'none':(t.data.type||'text'),plays:t.data.plays||2,scale:t.data.scale||null,audio:t.data.type=='audio'?'keep':null,hadAudio:t.data.type=='audio',fname:'',text:t.data.text,secs:t.data.secs||0,qsecs:t.data.qsecs||0,qmin:+((t.data.qsecs||0)/60).toFixed(2),qs:t.data.qs.map(toEd),shuf:t.data.shuf!==false,notes:t.data.notes||'',archived:!!t.data.archived}
+  E=t?{id:t.id,title:t.title,tags:(t.data.tags||[]).join(', '),type:t.data.noMat?'none':(t.data.type||'text'),plays:t.data.plays||2,scale:t.data.scale||null,audio:t.data.type=='audio'?'keep':null,hadAudio:t.data.type=='audio',fname:'',text:t.data.text,secs:t.data.secs||0,qsecs:t.data.qsecs||0,qmin:+((t.data.qsecs||0)/60).toFixed(2),qs:t.data.qs.map(toEd),ovr:t.data.ovr||null,shuf:t.data.shuf!==false,notes:t.data.notes||'',archived:!!t.data.archived}
      :{id:null,title:'',tags:'',type:'text',plays:2,scale:null,audio:null,hadAudio:false,fname:'',text:'',secs:60,qsecs:0,qmin:20,qs:[blank()],shuf:true,notes:'',archived:false};
+  const dk='draft-'+(t?t.id:'new');try{const dr=JSON.parse(localStorage[dk]||'null');if(dr&&dr.e){if(confirm('Знайдено незбережену чернетку від '+fmt(dr.t)+'. Відновити її?'))E={...dr.e,dirty:true,imp:false};else localStorage.removeItem(dk)}}catch(x){}
   draw();scrollTo(0,0);
 }
 function draw(){
@@ -436,12 +437,12 @@ document.addEventListener('click',async e=>{
   const b=e.target.closest('[data-a]');if(!b)return;const{a,id,v,i,k}=b.dataset,now=new Date().toISOString();
   try{
     if(E&&['addq','addp','addo','delq','delp','clrfile','dupq','delo','impgo'].includes(a))E.dirty=true;
-    if(a=='nav'){if(E){if(E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;V=v;return teacher()}V=v;render();return}
+    if(a=='nav'){if(E){if(E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;clearDraft();V=v;return teacher()}V=v;render();return}
     if(a=='out'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;delete sessionStorage.tk;location.reload();return}
     if(a=='goq'){const el=document.getElementById('q'+i);if(el){el.scrollIntoView({behavior:matchMedia('(prefers-reduced-motion:reduce)').matches?'auto':'smooth',block:'start'});const f=el.querySelector('textarea,input,select');if(f)f.focus({preventScroll:true})}return}
     if(a=='clrfile'){E.audio=E.hadAudio?'keep':null;E.fname='';return draw()}
     if(a=='tab'){TAB=v;render();return}
-    if(a=='open'){if(V!='detail')PREV=V;SEL=id;TAB='res';V='detail';render();window.scrollTo(0,0);return}
+    if(a=='open'){if(V!='detail')PREV=V;SEL=id;TAB='res';RQ='';V='detail';render();window.scrollTo(0,0);return}
     if(a=='imp'){$('#f').click();return}
     if(a=='copy'){await copyTxt(v);toast(b.dataset.m||'Скопійовано');return}
     if(a=='share'){try{await navigator.share({title:b.dataset.t,url:v})}catch(x){}return}
@@ -450,10 +451,10 @@ document.addEventListener('click',async e=>{
     if(a=='plus'){const s0=S.find(x=>x.id==id);await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:{extra_secs:(s0.extra_secs||0)+v*60}});load();return}
     if(a=='dup'){const t=T.find(x=>x.id==id);let au=null;
       if(t.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');au=f[0]||null}
-      await saveTest({title:t.title+' (копія)',data:t.data,audio:au});load();return}
+      await saveTest({title:t.title+' (копія)',data:(({ovr,...d})=>d)(t.data),audio:au});load();return}
     if(a=='pdf'){report(S.find(x=>x.id==id));return}
     if(a=='rpprint'){print();return}
-    if(a=='rpx'){const r=$('#RP');if(r)r.remove();return}
+    if(a=='rpx'){RPS=null;const r=$('#RP');if(r)r.remove();return}
     if(a=='tag'){TAGF=v;render();return}
     if(a=='reopen'){const s0=S.find(x=>x.id==id),d=s0.tests?.data||{},qs=d.qsecs||0;let mins=0;
       if(qs>0){const r=prompt('На скільки хвилин відкрити тест знову? Таймер піде від цього моменту. Також буде дозволено приєднання нових учнів.','5');if(r===null)return;mins=Math.round(+String(r).replace(',','.')||0);if(mins<1)return}
@@ -461,6 +462,14 @@ document.addEventListener('click',async e=>{
       const body={status:'quiz',ended_at:null,late_ok:true};
       if(qs>0){const st=s0.started_at?+new Date(s0.started_at):0,qst=s0.quiz_at?+new Date(s0.quiz_at):st+(d.secs||0)*1000;if(!s0.quiz_at)body.quiz_at=new Date(qst).toISOString();body.extra_secs=Math.max(0,Math.round((Date.now()-qst)/1000+mins*60-qs))}
       await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body});AE.delete(s0.id);toast('Тест відкрито знову');load();return}
+    if(a=='sr'){stReport(SEL,id);return}
+    if(a=='ovr'){const s0=S.find(x=>x.id==SEL),a0=s0.attempts.find(x=>x.id==id),od=s0.tests.data,qi=+i,q=od.qs[qi],cur=a0.answers[qi],raw=cur&&cur.__ov!==undefined?cur.v:cur,
+        oldP=qpts(q,cur),newP=v=='x'?qpts(q,raw):+v,ovr={...(od.ovr||{})},m={...(ovr[a0.id]||{})};
+      if(v=='x')delete m[qi];else m[qi]=newP;if(Object.keys(m).length)ovr[a0.id]=m;else delete ovr[a0.id];
+      const nd={...od};if(Object.keys(ovr).length)nd.ovr=ovr;else delete nd.ovr;
+      const sc=Math.min(a0.total,Math.max(0,+(+a0.score+newP-oldP).toFixed(2)));
+      await api('/rest/v1/tests?id=eq.'+s0.test_id,{method:'PATCH',body:{data:nd}});await api('/rest/v1/attempts?id=eq.'+a0.id,{method:'PATCH',body:{score:sc}});
+      await load();stReport(SEL,a0.id,true);toast('Оцінку оновлено');return}
     if(a=='archv'){ARCH=!ARCH;render();return}
     if(a=='archs'){SARCH=!SARCH;render();return}
     if(a=='arch'){const t=T.find(x=>x.id==id),d={...t.data};if(d.archived){delete d.archived}else d.archived=true;await api('/rest/v1/tests?id=eq.'+id,{method:'PATCH',body:{data:d}});toast(d.archived?'Тест перенесено в архів':'Тест відновлено');load();return}
@@ -469,7 +478,7 @@ document.addEventListener('click',async e=>{
       const out={app:'reading-test',v:1,tests:T.map(t=>({title:t.title,...t.data,...(M[t.id]?{audio:{mime:M[t.id].mime,data:M[t.id].data}}:{})}))},l=document.createElement('a');
       l.href=URL.createObjectURL(new Blob([JSON.stringify(out)],{type:'application/json'}));l.download='tests-backup-'+new Date().toISOString().slice(0,10)+'.json';l.click();toast('Збережено тестів: '+T.length);return}
     if(a=='sela'){const k=''+id;if(SELA.has(k))SELA.delete(k);else SELA.add(k);render();return}
-    if(a=='selall'){const s0=S.find(x=>x.id==id),ids=s0.attempts.map(x=>''+x.id);if(ids.every(k=>SELA.has(k)))ids.forEach(k=>SELA.delete(k));else ids.forEach(k=>SELA.add(k));render();return}
+    if(a=='selall'){const s0=S.find(x=>x.id==id),ids=s0.attempts.filter(x=>!RQ.trim()||x.name.toLowerCase().includes(RQ.trim().toLowerCase())).map(x=>''+x.id);if(ids.every(k=>SELA.has(k)))ids.forEach(k=>SELA.delete(k));else ids.forEach(k=>SELA.add(k));render();return}
     if(a=='bulk'){const s0=S.find(x=>x.id==id),ids=s0.attempts.map(x=>x.id).filter(k=>SELA.has(''+k));if(!ids.length)return;
       if(!confirm('Скинути спроби обраних учнів ('+ids.length+')? Вони зможуть пройти тест заново (за умови, що приєднання дозволене). Якщо результати ще потрібні, спершу завантажте таблицю.'))return;
       await api('/rest/v1/attempts?id=in.('+ids.join(',')+')',{method:'DELETE'});ids.forEach(k=>SELA.delete(''+k));toast('Скинуто спроб: '+ids.length);load();return}
@@ -490,8 +499,8 @@ document.addEventListener('click',async e=>{
       if(E.qs.length==1&&!E.qs[0].q.trim()&&E.qs[0].o?.every(x=>!x))E.qs=[];E.qs.push(...L);E.imp=false;draw();const bad=L.filter(x=>!cq(x)).length;toast('Додано питань: '+L.length+(bad?'. Потребують уваги: '+bad+' (позначені «!»)':''));return}
     if(a=='printe')return printTest(clean(E));
     if(a=='printt'){const t0=T.find(x=>x.id==id);return printTest({title:t0.title,data:t0.data})}
-    if(a=='back'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;return teacher()}
-    if(a=='save'){const o=clean(E);if(o.data.qs.length<E.qs.length&&!confirm('Деякі питання неповні (потрібні текст, відповіді та позначена правильна) і не будуть збережені. Зберегти без них?'))return;await saveTest(o,E.id);return teacher()}
+    if(a=='back'){if(E&&E.dirty&&!confirm('Вийти без збереження? Внесені зміни буде втрачено.'))return;clearDraft();return teacher()}
+    if(a=='save'){const o=clean(E);if(o.data.qs.length<E.qs.length&&!confirm('Деякі питання неповні (потрібні текст, відповіді та позначена правильна) і не будуть збережені. Зберегти без них?'))return;await saveTest(o,E.id);clearDraft();return teacher()}
     if(a=='new'||a=='fast'){let sid;for(let k=0;k<5;k++){try{const r=await api('/rest/v1/sessions',{method:'POST',body:{test_id:id,code:genCode()},prefer:'return=representation'});sid=r[0].id;break}catch(x){if(k==4)throw x}}PREV=a=='fast'?'tests':'sessions';SEL=sid;TAB='ctl';V='detail';if(a=='fast'){PJ=sid;document.documentElement.requestFullscreen?.().catch(()=>{})}}
     else if(a=='st')await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body:v=='show'?{status:v,started_at:now}:v=='quiz'?{status:v,quiz_at:now}:{status:v,ended_at:now}});
     else if(a=='exp'){const t=T.find(x=>x.id==id),l=document.createElement('a'),ex={title:t.title,...t.data};
@@ -509,7 +518,34 @@ document.addEventListener('click',async e=>{
     load();
   }catch(x){alert(x.message)}
 });
-function report(s){
+const clearDraft=()=>{if(!E)return;try{localStorage.removeItem('draft-'+(E.id||'new'))}catch(x){}};
+let DT;function saveDraft(){if(!E||!E.dirty)return;try{const e={...E,imp:false,audio:E.audio&&E.audio!=='keep'?null:E.audio};if(!e.audio&&E.audio&&E.audio!=='keep')e.fname='';localStorage['draft-'+(E.id||'new')]=JSON.stringify({t:Date.now(),e})}catch(x){}}
+['input','change','click'].forEach(ev=>document.addEventListener(ev,()=>{if(E&&E.dirty){clearTimeout(DT);DT=setTimeout(saveDraft,500)}}));
+function ovrApply(){S.forEach(s=>{const m=s.tests?.data?.ovr;if(m)s.attempts.forEach(a=>{const o=m[a.id];if(o&&Array.isArray(a.answers))a.answers=a.answers.map((v,k)=>o[k]!=null?{__ov:o[k],v}:v)})})}
+function resRows(s){const i=info(s),q=RQ.trim().toLowerCase(),L=s.attempts.filter(a=>!q||a.name.toLowerCase().includes(q)),ov=s.tests?.data?.ovr||{};
+  return L.map(a=>`<tr><td><input type="checkbox" data-a="sela" data-id="${a.id}" ${SELA.has(''+a.id)?'checked':''} aria-label="Обрати: ${esc(a.name)}"></td><td><button class="lnk" style="margin:0" data-a="sr" data-id="${a.id}" title="Переглянути звіт">${esc(a.name)}</button>${ov[a.id]?' <span class="mut sm" title="Оцінку змінено вручну">✎</span>':''}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td>${a.finished_at?grade(a.score,a.total,i.sc):'—'}</td><td>${a.leaves}</td><td><button data-a="sr" data-id="${a.id}">Звіт</button><button class="danger" data-a="da" data-id="${a.id}">Скинути</button></td></tr>`).join('')||`<tr><td colspan="6" class="mut">${q?'Нікого не знайдено.':'Ніхто ще не приєднався.'}</td></tr>`}
+document.addEventListener('input',e=>{if(e.target.id=='rq'){RQ=e.target.value;const s=S.find(x=>x.id==SEL),b=$('#rb');if(s&&b)b.innerHTML=resRows(s)}});
+function stReport(sid,aid,keep){
+  const s=S.find(x=>x.id==sid),a=s&&s.attempts.find(x=>x.id==aid);if(!a)return;RPS={sid,aid};
+  const i=info(s),qs=i.qs,fin=!!a.finished_at,n=a.total||qs.length,ok=+(+a.score).toFixed(2),pct=n?Math.round(ok/n*100):0,g=fin?grade(a.score,a.total,i.sc):'—',C=2*Math.PI*42,
+    R=qs.map((q,k)=>{const v=a.answers?.[k],p=v==null?0:qpts(q,v);return{q,v,k,st:v==null?'sk':p>=1?'ok':p>0?'pt':'bad',ov:v!=null&&v.__ov!==undefined}}),
+    cnt=c=>R.filter(r=>r.st==c).length,lbl={ok:'Правильно',pt:'Частково',bad:'Неправильно',sk:'Пропущено'},sym={ok:'✓',pt:'±',bad:'✕',sk:'–'},col={ok:'#0f6b52',pt:'#b7791f',bad:'#b3392f',sk:'#5f6f68'},
+    bd=c=>`<span class="srb" style="background:${col[c]}">${sym[c]} ${lbl[c]}</span>`,
+    donut=`<svg viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="${pct}%"><circle cx="50" cy="50" r="42" fill="none" stroke="#dbe4df" stroke-width="10"/><circle cx="50" cy="50" r="42" fill="none" stroke="#0f6b52" stroke-width="10" stroke-linecap="round" stroke-dasharray="${C*pct/100} ${C}" transform="rotate(-90 50 50)"/><text x="50" y="56" text-anchor="middle" font-size="20" font-weight="700" fill="currentColor">${pct}%</text></svg>`,
+    ctl=r=>{if(r.q.type!='short'||r.v==null)return'';const o=[['1','Зарахувати',r.st!='ok'],['0.5','½ бала',r.st!='pt'&&(r.ov||r.st!='ok')],['x','Скасувати зміну',r.ov]].filter(x=>x[2]);
+      return`<div class="noprint" style="margin-top:6px">${r.ov?'<span class="mut sm">Змінено вчителем. </span>':''}${o.map(([v,t])=>`<button data-a="ovr" data-id="${a.id}" data-i="${r.k}" data-v="${v}">${t}</button>`).join('')}</div>`};
+  let el=$('#RP');const y=el?el.scrollTop:0;if(!el){el=document.createElement('div');el.id='RP';el.className='rp';document.body.appendChild(el)}
+  el.innerHTML=`<style>@media print{@page{size:A4 portrait;margin:12mm}}.sr .srb{display:inline-block;border-radius:99px;padding:2px 10px;color:#fff;font-weight:600;font-size:.85rem;white-space:nowrap}.sr .sg{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:12px 0}.sr .sg>div{border:1px solid #dbe4df;border-radius:10px;padding:10px 12px}.sr .big{font-size:2rem;font-weight:700}.sr table{width:100%;border-collapse:collapse}.sr td,.sr th{border-top:1px solid #dbe4df;padding:7px 8px;text-align:left;vertical-align:top}</style>
+  <div class="rpb noprint"><button class="pri" data-a="rpprint">Зберегти звіт учня в PDF</button><button data-a="rpx">Закрити</button><span class="mut sm">У вікні друку оберіть «Зберегти як PDF».</span></div>
+  <div class="rpd sr"><div class="row"><div><b style="font-size:1.1rem;color:#0f6b52">Читання й тест</b> <span style="color:#5f6f68;font-size:.88rem">Українська мова та література</span></div><span style="color:#5f6f68;font-size:.88rem">Звіт сформовано ${fmt(new Date())}</span></div>
+  <h1 style="margin:14px 0 4px">Результати учня</h1><p style="margin:0 0 6px;font-size:1.05rem;color:#5f6f68">${esc(s.tests?.title||'')}</p>
+  <div class="sg"><div><span class="mut sm">Учень</span><br><b>${esc(a.name)}</b></div><div><span class="mut sm">Дата здачі</span><br><b>${fin?fmt(a.finished_at):'ще не здав(-ла)'}</b></div><div><span class="mut sm">Виходи з вкладки</span><br><b>${a.leaves}</b></div></div>
+  ${fin?`<div class="sg" style="align-items:center;background:#e1efe9;border-radius:12px;padding:14px"><div style="border:0"><span class="mut">Результат</span><div class="big">${ok} з ${n}</div><div>Оцінка: <b>${g}</b> з 12</div></div><div style="border:0">${donut}</div></div>
+  <div class="sg">${[['ok','Повністю правильних'],['pt','Частково'],['bad','Неправильних'],['sk','Пропущено']].map(([c,l])=>`<div><span class="mut sm">${l}</span><br><b style="font-size:1.4rem">${cnt(c)}</b></div>`).join('')}</div>
+  ${R.some(r=>r.ov)?'<p class="mut sm">Оцінку скориговано вчителем вручну.</p>':''}
+  <table><tr><th>№</th><th>Питання</th><th>Відповідь учня</th><th>Правильна відповідь</th><th>Результат</th></tr>${R.map(r=>`<tr><td>${r.k+1}</td><td>${esc(r.q.q)}</td><td>${esc(fa(r.q,r.v))}${ctl(r)}</td><td>${esc(fk(r.q))}${r.q.expl?`<div class="mut sm" style="margin-top:4px">${esc(r.q.expl)}</div>`:''}</td><td>${bd(r.st)}</td></tr>`).join('')}</table>`:'<p class="mut">Учень ще не здав роботу, тому звіту немає.</p>'}</div>`;
+  el.scrollTop=keep?y:0}
+function report(s){RPS=null;
   const i=info(s),qs=i.qs,rows=i.A.slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
   const mark=(a,k)=>{if(!a.finished_at)return'<td class="m sk">–</td>';const v=a.answers?.[k];if(v==null)return'<td class="m sk">–</td>';const pt=qpts(qs[k],v);return pt>=1?'<td class="m ok">✓</td>':pt>0?'<td class="m ok">±</td>':'<td class="m bad">✕</td>'};
   const pc=qs.map((q,k)=>i.D.length?Math.round(i.D.reduce((x,a)=>x+qpts(q,a.answers?.[k]),0)/i.D.length*100)+'%':'—');
