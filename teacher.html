@@ -196,7 +196,7 @@ function parseQs(txt){
   if(ps.length>1&&!/^питання/i.test(l)){ps.forEach(p=>K[+p[1]]=p[2]);return}
   if(m=l.match(/^(?:питання\s*)?(\d+)\s*[:.)—–-]\s*(.+)$/i))K[+m[1]]=m[2].trim()});
  const qs=[];let q=null,m;
- for(const raw of body){const l=raw.trim();if(!l||/^[-_*]{3,}$/.test(l))continue;let hd=false;
+ for(const raw of body){let l=raw.trim();if(!l||/^[-_*]{3,}$/.test(l))continue;if(l.includes('\t')&&!/^[#*\s]*(?:питання|question)\s*\d/i.test(l)){const cs=l.split(/\t+/).map(c=>c.trim()).filter(Boolean);if(cs.length>1)l='|'+cs.join('|')+'|'}let hd=false;
   m=l.match(/^#{1,6}\s*(?:питання|question)?\s*(\d+)\s*[.):]?\s*(.*)$/i)||l.match(/^\**\s*(?:питання|question)\s*(\d+)\s*\**\s*[.):]?\s*\**\s*(.*)$/i);
   if(m)hd=true;else m=l.match(/^(\d+)\s*[.)]\s*(.+)$/);
   if(m){let r=cl(m[2]),h='';if(hd)r=r.replace(/\(([^)]*)\)/,(_,x)=>{h=x;return''}).trim();q={n:+m[1],q:r,h:h.toLowerCase(),o:[],L:[],c:[],ans:'',rows:[],hdr:false};qs.push(q);continue}
