@@ -78,6 +78,10 @@ button:disabled{opacity:.5;cursor:default}
 .ring{position:relative;width:150px;margin:0 auto 14px}
 .rt{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center}
 .rt b{font-size:1.55rem;font-variant-numeric:tabular-nums}#rg{transition:stroke-dashoffset 1s linear}
+.sa{display:block;width:100%;padding:12px 14px;font:inherit;font-size:1.05rem;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:12px;margin-top:10px}
+.mrow{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;margin-top:10px}
+.mrow select{padding:10px;font:inherit;font-size:1rem;border:1px solid var(--line);border-radius:10px;background:var(--bg);color:var(--ink);width:100%}
+@media(max-width:560px){.mrow{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -98,6 +102,14 @@ const rpc=(n,b)=>api('/rest/v1/rpc/'+n,{method:'POST',body:b});
 const MSG={no_session:'Заняття з таким кодом не знайдено або воно вже завершене.',name_taken:'Це ім\'я вже використано в цьому занятті. Якщо це ви, зверніться до вчителя.',bad_name:'Введіть ім\'я (до 40 символів).',closed:'Час на відповіді закінчився.',already:'Ви вже надіслали відповіді.',no_plays:'Прослуховування вичерпано.',no_audio:'Аудіофайл не знайдено.',started:'Тест уже розпочався, приєднатися не можна. Зверніться до вчителя.'};
 const say=e=>MSG[e.message]||e.message;
 
+const fa=(q,a)=>{const t=q.type||'single';if(a==null)return'—';
+  if(t=='single')return q.o[a]??'—';
+  if(t=='multi')return Array.isArray(a)&&a.length?a.map(k=>q.o[k]).join('; '):'—';
+  if(t=='short')return String(a)||'—';
+  return Array.isArray(a)?q.pairs.map((p,k)=>p.l+' → '+(a[k]??'—')).join('; '):'—'};
+const fk=q=>{const t=q.type||'single';
+  if(t=='single')return q.o[q.c];if(t=='multi')return q.c.map(k=>q.o[k]).join('; ');
+  if(t=='short')return q.a.join(' / ');return q.pairs.map(p=>p.l+' → '+p.r).join('; ')};
 /* ================= УЧЕНЬ ================= */
 function student(){
   const c0=new URLSearchParams(location.search).get('c')||'';
@@ -119,7 +131,7 @@ function run(code,tok){
       g=s.grade??Math.max(1,Math.round(12*ok/n)),R=s.review,
       dt=s.finished?new Date(s.finished).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'',
       took=s.took!=null?Math.floor(s.took/60)+' хв '+s.took%60+' с':'—',C=2*Math.PI*42,
-      st=R?R.map(r=>r.mine==null?'sk':r.mine==r.c?'ok':'bad'):[],
+      st=R?R.map(r=>r.mine==null?'sk':r.ok?'ok':'bad'):[],
       lbl={ok:'Правильно',bad:'Неправильно',sk:'Пропущено'},sym={ok:'✓',bad:'✕',sk:'–'},
       dot=c=>`<span class="dot ${c}">${sym[c]||'★'}</span>`,
       rec=st.map((x,i)=>x=='ok'?0:i+1).filter(Boolean),
@@ -133,7 +145,7 @@ function run(code,tok){
     <h2>Розбір результатів</h2>
     <div class="g4">${[['ok','Правильних відповідей',ok],['bad','Неправильних відповідей',bad],['sk','Пропущено',sk]].map(([c,l,v])=>`<div class="card">${dot(c)}<div class="mut sm">${l}</div><b class="n">${v}</b><div class="mut sm">${Math.round(v/n*100)}% від загальної кількості</div></div>`).join('')}<div class="card">${dot('')}<div class="mut sm">Оцінка за тест</div><b class="n">${g}</b> <span class="mut">/ 12</span></div></div>
     ${R?`<div class="g2" style="margin-top:12px"><div class="card"><h2 style="margin-top:0">Результати за питаннями</h2>${R.map((r,i)=>`<div class="qr"><span class="no">${i+1}</span><span>${esc(r.q)}</span><span class="rc ${st[i]}">${lbl[st[i]]}</span></div>`).join('')}</div>
-      <div class="card" style="overflow-x:auto"><h2 style="margin-top:0">Відповіді учасника</h2><table><tr><th>№</th><th>Ваша відповідь</th><th>Правильна відповідь</th><th></th></tr>${R.map((r,i)=>`<tr><td>${i+1}</td><td>${r.mine==null?'—':esc(r.o[r.mine])}</td><td>${esc(r.o[r.c])}</td><td>${dot(st[i])}</td></tr>`).join('')}</table></div></div>
+      <div class="card" style="overflow-x:auto"><h2 style="margin-top:0">Відповіді учасника</h2><table><tr><th>№</th><th>Ваша відповідь</th><th>Правильна відповідь</th><th></th></tr>${R.map((r,i)=>`<tr><td>${i+1}</td><td>${esc(fa(r,r.mine))}</td><td>${esc(fk(r))}</td><td>${dot(st[i])}</td></tr>`).join('')}</table></div></div>
       <div class="card rec"><b>Рекомендація</b><br>${rec.length?'Зверніть увагу на питання №'+rec.join(', ')+': саме в них були помилки чи пропуски.':'Помилок немає. Чудовий результат!'}</div>`
     :`<div class="card rec noprint">Розбір за питаннями з’явиться тут після завершення заняття, якщо вчитель дозволить показ правильних відповідей. Ця сторінка оновиться сама.</div>`}
     <p class="noprint" style="margin-top:16px"><button class="pri" id="pr">Зберегти як PDF або роздрукувати</button></p><p class="mut sm noprint">У вікні друку оберіть «Зберегти як PDF».</p>
@@ -169,15 +181,19 @@ function run(code,tok){
     else if(key=='done'){if(send){const f=send;key='';await f(true);return}stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
   };
   const quiz=s=>{
-    const Q=sh(s.qs.map((x,i)=>({i,q:x.q,o:sh(x.o.map((t,j)=>({j,t})))}))),A={},n=Q.length,C=2*Math.PI*52;
+    const Q=sh(s.qs.map((x,i)=>({i,t:x.type||'single',q:x.q,o:x.o?sh(x.o.map((t,j)=>({j,t}))):null,l:x.l,r:x.r?sh(x.r):null}))),A={},n=Q.length,C=2*Math.PI*52;
+    const has=x=>{const a=A[x.i];if(x.t=='multi')return !!(a&&a.length);if(x.t=='short')return !!(a&&a.trim());if(x.t=='match')return !!(a&&x.l.every((_,k)=>a[k]));return a!=null};
     let k=0,qrem=s.left,qtot=s.left;
     const fT=r=>String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0');
-    const skipped=()=>Q.map((x,m)=>A[x.i]==null?m+1:0).filter(Boolean);
+    const skipped=()=>Q.map((x,m)=>has(x)?0:m+1).filter(Boolean);
     const clock=()=>{if(qrem==null)return;document.querySelectorAll('.tt').forEach(e=>e.textContent=fT(qrem));
       const g=$('#rg');if(g)g.style.strokeDashoffset=C*(1-(qtot?qrem/qtot:0))};
-    const upd=()=>{const c=document.querySelector('.qn.cur');c&&c.classList.add('done');const m=Object.keys(A).length;
+    const upd=()=>{const c=document.querySelector('.qn.cur');c&&c.classList.toggle('done',has(Q[k]));const m=Q.filter(has).length;
       $('#ac').textContent='Відповіли: '+m+' з '+n;$('#ab').style.width=m/n*100+'%'};
-    const draw=()=>{const x=Q[k],m=Object.keys(A).length,timed=qrem!=null;
+    const body=x=>x.t=='short'?`<input type="text" id="sa" class="sa" placeholder="Впишіть відповідь" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" value="${esc(A[x.i]||'')}">`
+      :x.t=='match'?`<p class="mut sm">Оберіть для кожного пункту відповідну пару.</p>${x.l.map((l,m)=>`<div class="mrow"><span>${esc(l)}</span><select data-m="${m}" aria-label="${esc(l)}"><option value="">— оберіть —</option>${x.r.map(r=>`<option value="${esc(r)}" ${A[x.i]&&A[x.i][m]===r?'selected':''}>${esc(r)}</option>`).join('')}</select></div>`).join('')}`
+      :`${x.t=='multi'?'<p class="mut sm">Оберіть усі правильні відповіді.</p>':''}${x.o.map(o=>`<label class="o"><input type="${x.t=='multi'?'checkbox':'radio'}" name="q" value="${o.j}" ${(x.t=='multi'?(A[x.i]||[]).includes(o.j):A[x.i]===o.j)?'checked':''}><span>${esc(o.t)}</span></label>`).join('')}`;
+    const draw=()=>{const x=Q[k],m=Q.filter(has).length,timed=qrem!=null;
       $('#app').classList.add('wide');
       view(`<div style="margin-bottom:14px"><b style="font-size:1.25rem">Тестування</b><div class="mut sm">${esc(s.title)}</div></div>
       <div class="qg"><div>
@@ -186,7 +202,7 @@ function run(code,tok){
         <div class="card qc"><div class="row"><span class="mut sm">Питання ${k+1} з ${n}</span>${timed?'<span class="mut tt" style="font-variant-numeric:tabular-nums"></span>':''}</div>
           <div class="pb" style="height:7px;border-radius:4px;background:var(--line);margin-top:6px"><i style="display:block;height:100%;border-radius:4px;background:var(--g);width:${(k+1)/n*100}%"></i></div>
           <h2 class="qt">${k+1}. ${esc(x.q)}</h2>
-          ${x.o.map(o=>`<label class="o"><input type="radio" name="q" value="${o.j}" ${A[x.i]===o.j?'checked':''}><span>${esc(o.t)}</span></label>`).join('')}
+          ${body(x)}
           <div class="qf"><button id="pv" ${k?'':'disabled'}>← Попереднє питання</button>${k<n-1?'<button class="pri" id="nx">Наступне питання →</button>':'<button class="pri fin">Завершити тест</button>'}</div>
         </div><p class="err" id="e"></p>
       </div>
@@ -194,7 +210,7 @@ function run(code,tok){
         ${timed?`<div class="ring"><svg viewBox="0 0 120 120" width="150" height="150" aria-hidden="true"><circle cx="60" cy="60" r="52" fill="none" stroke="var(--line)" stroke-width="9"/><circle id="rg" cx="60" cy="60" r="52" fill="none" stroke="var(--g)" stroke-width="9" stroke-linecap="round" stroke-dasharray="${C}" transform="rotate(-90 60 60)"/></svg><div class="rt"><b class="tt"></b><span class="mut sm">Час до завершення</span></div></div>`:''}
         <div class="mut sm" id="ac">Відповіли: ${m} з ${n}</div><div class="pb" style="height:7px;border-radius:4px;background:var(--line);margin:4px 0 16px"><i id="ab" style="display:block;height:100%;border-radius:4px;background:var(--g);width:${m/n*100}%"></i></div>
         <b>Навігація по питаннях</b>
-        <div class="nvg">${Q.map((y,i)=>`<button class="qn${A[y.i]!=null?' done':''}${i==k?' cur':''}" data-n="${i}" aria-label="Питання ${i+1}${A[y.i]!=null?', відповідь дано':''}">${i+1}</button>`).join('')}</div>
+        <div class="nvg">${Q.map((y,i)=>`<button class="qn${has(y)?' done':''}${i==k?' cur':''}" data-n="${i}" aria-label="Питання ${i+1}${has(y)?', відповідь дано':''}">${i+1}</button>`).join('')}</div>
         <div class="lg"><span><i class="a"></i>Відповідено</span><span><i class="c"></i>Поточне питання</span><span><i></i>Не відповідено</span></div>
         <div class="tip"><b>Порада</b><br>Уважно читайте запитання та всі варіанти відповідей.${timed?' Час на тест обмежений, слідкуйте за таймером.':''}</div>
         <button class="fin" style="width:100%;margin:0">Завершити тест</button>
@@ -202,7 +218,10 @@ function run(code,tok){
       <dialog id="dg"><p id="dm"></p><button id="no">Повернутися</button><button class="pri" id="yes">Так, завершити</button></dialog>`);
       clock();
       document.querySelectorAll('.qn').forEach(b=>b.onclick=()=>{k=+b.dataset.n;draw()});
-      document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{A[x.i]=+i.value;upd()});
+      document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{
+        if(x.t=='multi')A[x.i]=[...document.querySelectorAll('input[name=q]:checked')].map(c=>+c.value).sort((a,b)=>a-b);else A[x.i]=+i.value;upd()});
+      const sa=$('#sa');if(sa)sa.oninput=()=>{A[x.i]=sa.value;upd()};
+      document.querySelectorAll('select[data-m]').forEach(sel=>sel.onchange=()=>{const a=A[x.i]||(A[x.i]=x.l.map(()=>null));a[+sel.dataset.m]=sel.value||null;upd()});
       if(k)$('#pv').onclick=()=>{k--;draw()};if($('#nx'))$('#nx').onclick=()=>{k++;draw()};
       document.querySelectorAll('.fin').forEach(b=>b.onclick=()=>{const sk=skipped();
         $('#dm').textContent=sk.length?`Ви не відповіли на питання: ${sk.join(', ')}. Завершити тест без них? Після цього змінити відповіді буде неможливо.`:'Ви впевнені, що хочете завершити тест? Після цього змінити відповіді буде неможливо.';
@@ -210,7 +229,7 @@ function run(code,tok){
       $('#no').onclick=()=>$('#dg').close();$('#yes').onclick=()=>{$('#dg').close();send&&send()};
     };
     send=async force=>{
-      const ans=s.qs.map((_,i)=>A[i]??null);
+      const ans=s.qs.map((_,i)=>{const a=A[i];if(a==null)return null;if(Array.isArray(a))return a.some(v=>v!=null)?a:null;if(typeof a=='string')return a.trim()||null;return a});
       try{await rpc('submit',{p_code:code,p_token:tok,p_ans:ans});send=null;key='';tick()}
       catch(e){if(e.message=='already'){send=null;key='';return tick()}
         if(force){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}else $('#e').textContent=say(e)}};
