@@ -308,3 +308,9 @@ function run(code,tok){CT={code,tok};
     if(qrem!=null){let t0=Date.now()+qrem*1000;qsync=l=>{t0=Date.now()+l*1000;if(l>qtot)qtot=l};cd=setInterval(()=>{qrem=Math.max(0,Math.ceil((t0-Date.now())/1000));clock();if(!qrem){clearInterval(cd);send&&send(true)}},1000)}
   };
   poll=setInterval(tick,2500);tick();
+}
+
+student();
+</script>
+</body>
+</html>
