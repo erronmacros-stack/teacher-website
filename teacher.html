@@ -149,6 +149,7 @@ async function api(path,{method='GET',body,prefer}={}){
   return d}
 const qStart=s=>{const d=s.tests?.data||{},sec=d.secs||0,st=s.started_at?+new Date(s.started_at):0;return s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+sec*1000):(s.status=='show'&&sec>0&&st?st+sec*1000:0)};
 const qEnd=s=>{const q=s.tests?.data?.qsecs||0,b=qStart(s);return b&&q?b+(q+(s.extra_secs||0))*1000:0};
+const VER='16.10.2026-в (дошка)';
 const PL={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',late:'Завершено за часом',done:'Завершено'};
 const phase=s=>{if(s.status=='wait'||s.status=='done')return s.status;const b=qStart(s),e=qEnd(s),n=Date.now();if(s.status=='show'&&(!b||n<b))return'show';return e&&n>e?'late':'quiz'};
 const AE=new Set();function autoEnd(){S.forEach(s=>{const e=qEnd(s);if(e&&Date.now()>e+15000&&!AE.has(s.id)){AE.add(s.id);api('/rest/v1/sessions?id=eq.'+s.id,{method:'PATCH',body:{status:'done',ended_at:new Date(e).toISOString()}}).then(()=>load()).catch(()=>{})}})}
@@ -193,7 +194,7 @@ const ic=n=>`<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke=
 const fmt=d=>d?new Date(d).toLocaleString('uk-UA',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}):'';
 const side=on=>`<nav class="side"><div class="brand">${ic('book')}Читання й тест</div><small>Українська мова та література</small>
     ${[['home','Огляд','home'],['tests','Тести','doc'],['sessions','Заняття','list'],['help','Як користуватися','help']].map(([k,t,i])=>`<button class="nv${on==k?' on':''}" data-a="nav" data-v="${k}">${ic(i)}${t}</button>`).join('')}
-    <div style="flex:1"></div><button class="nv" data-a="out">Вийти</button></nav>`;
+    <div style="flex:1"></div><div class="mut sm" style="padding:6px 12px">Версія ${VER}</div><button class="nv" data-a="out">Вийти</button></nav>`;
 async function copyTxt(v){try{await navigator.clipboard.writeText(v)}catch(e){const x=document.createElement('textarea');x.value=v;x.style.cssText='position:fixed;opacity:0';document.body.appendChild(x);x.select();document.execCommand('copy');x.remove()}}
 function toast(m){let e=$('#toast');if(!e){e=document.createElement('div');e.id='toast';e.className='toast';e.setAttribute('role','status');document.body.appendChild(e)}e.textContent=m;e.style.display='block';clearTimeout(e._t);e._t=setTimeout(()=>e.style.display='none',1800)}
 function parseQs(txt){
@@ -590,3 +591,51 @@ function bdAct(v){const B=BD;if(!B)return;const n=(B.t.data.qs||[]).length;
   else if(v=='next'){if(B.stage=='intro')bdStart('q');else if(B.i<n-1)B.i++}
   else if(v=='prev'){if(B.i>0)B.i--}
   else if(v=='view')B.view=B.view=='one'?'all':'one';
+  else if(v=='mat')B.mat=!B.mat;
+  else if(v=='fs+'||v=='fs-')B.fs=Math.min(2,Math.max(.7,+(B.fs+(v=='fs+'?.15:-.15)).toFixed(2)));
+  bdDraw()}
+setInterval(bdTick,500);
+document.addEventListener('keydown',e=>{if(!BD)return;if(e.key=='Escape')bdAct('close');else if(e.key=='ArrowRight'||(e.key==' '&&e.target.tagName!='BUTTON')){e.preventDefault();bdAct('next')}else if(e.key=='ArrowLeft')bdAct('prev')});
+function report(s){RPS=null;
+  const i=info(s),qs=i.qs,rows=i.A.slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
+  const mark=(a,k)=>{if(!a.finished_at)return'<td class="m sk">–</td>';const v=a.answers?.[k];if(v==null)return'<td class="m sk">–</td>';const pt=qpts(qs[k],v);return pt>=1?'<td class="m ok">✓</td>':pt>0?'<td class="m ok">±</td>':'<td class="m bad">✕</td>'};
+  const pc=qs.map((q,k)=>i.D.length?Math.round(i.D.reduce((x,a)=>x+qpts(q,a.answers?.[k]),0)/i.D.length*100)+'%':'—');
+  let el=$('#RP');if(!el){el=document.createElement('div');el.id='RP';el.className='rp';document.body.appendChild(el)}
+  el.innerHTML=`<div class="rpb noprint"><button class="pri" data-a="rpprint">Зберегти як PDF або надрукувати</button><button data-a="rpx">Закрити</button><span class="mut sm">У вікні друку оберіть «Зберегти як PDF». Орієнтація сторінки вже альбомна.</span></div>
+  <div class="rpd"><div class="row"><div><b style="font-size:1.1rem;color:#0f6b52">Читання й тест</b> <span style="color:#5f6f68;font-size:.88rem">Українська мова та література</span></div><span style="color:#5f6f68;font-size:.88rem">Звіт сформовано ${fmt(new Date())}</span></div>
+  <h1 style="margin:14px 0 4px">Результати тесту</h1><p style="margin:0 0 12px;font-size:1.05rem;color:#5f6f68">${esc(s.tests?.title||'')}, заняття від ${fmt(s.created_at)}, код ${s.code}</p>
+  <div class="rps"><div><span>Учнів</span><b>${rows.length}</b></div><div><span>Здали роботу</span><b>${i.D.length}</b></div><div><span>Середня оцінка</span><b>${i.avg==null?'—':i.avg.toFixed(1)} / 12</b></div><div><span>Правильних відповідей</span><b>${i.pct==null?'—':i.pct+'%'}</b></div></div>
+  <table class="rpt"><thead><tr><th>№</th><th class="l">Учень</th><th>Бал</th><th>Оцінка (12)</th><th>Виходи</th>${qs.map((q,k)=>`<th>${k+1}</th>`).join('')}</tr></thead><tbody>
+  ${rows.map((a,n)=>`<tr><td>${n+1}</td><td class="l">${esc(a.name)}</td><td>${a.finished_at?a.score+' з '+a.total:'—'}</td><td><b>${a.finished_at?grade(a.score,a.total,i.sc):'—'}</b></td><td>${a.leaves}</td>${qs.map((q,k)=>mark(a,k)).join('')}</tr>`).join('')||'<tr><td colspan="5">Ніхто не приєднався.</td></tr>'}
+  </tbody><tfoot><tr><td></td><td class="l">Правильних, %</td><td></td><td></td><td></td>${pc.map(p=>`<td>${p}</td>`).join('')}</tr></tfoot></table>
+  <p style="color:#5f6f68;font-size:.85rem;margin-bottom:0">✓ правильно, ± частково, ✕ неправильно, – немає відповіді. Номери стовпців відповідають порядку питань у тесті.</p></div>`;
+  el.scrollTop=0}
+let PJ=null;
+function drawPJ(){
+  let el=$('#PJ');const s=PJ&&S.find(x=>x.id==PJ);
+  if(!s){if(el)el.remove();PJ=null;return}
+  if(!el){el=document.createElement('div');el.id='PJ';el.className='pj';document.body.appendChild(el)}
+  const base=location.origin+location.pathname.replace(/[^/]*$/,'')+'online.html',i=info(s);
+  let qr='';try{const q=qrcode(0,'M');q.addData(base+'?c='+s.code);q.make();qr=q.createSvgTag({cellSize:6,margin:2,scalable:true})}catch(e){}
+  el.innerHTML=`<button data-a="pjx" style="position:absolute;top:16px;right:16px">Закрити (Esc)</button><div class="pjc">
+    <p class="mut" style="font-size:1.4rem;margin:0">Щоб приєднатися, скануйте QR-код або відкрийте сторінку</p>
+    <p style="font-size:clamp(1rem,2.4vw,1.8rem);margin:6px 0 22px;word-break:break-all"><b>${esc(base)}</b></p>
+    <div class="pjg"><div class="qrb">${qr}</div><div><div class="mut" style="font-size:1.3rem">Код заняття</div><div class="pjcode">${s.code}</div></div></div>
+    <p style="font-size:1.7rem;margin-top:24px">Приєдналися: <b>${i.A.length}</b>${i.D.length?`, здали: <b>${i.D.length}</b>`:''}</p></div>`}
+function tmr(s,i){
+  const secs=i.d.secs||0,qs=i.d.qsecs||0,st=s.started_at?+new Date(s.started_at):0;
+  if(s.status=='show'&&st&&secs>0&&Date.now()<st+secs*1000)return`<div class="mut sm" style="margin-top:6px">Показ матеріалу: залишилось <b class="cdn" data-end="${st+secs*1000}"></b></div>`;
+  const qst=s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+secs*1000):(s.status=='show'&&secs>0&&st?st+secs*1000:0);
+  if(!qs&&qst)return`<div class="mut sm" style="margin-top:6px;max-width:320px">Час на тест не задано, тому тест сам не завершиться. Натисніть «Завершити» або вкажіть «Час на тест, хв» у редакторі тесту.</div>`;
+  if(!qs||!qst)return'';
+  const end=qst+(qs+(s.extra_secs||0))*1000;if(Date.now()>end)return'';
+  return`<div class="mut sm" style="margin-top:6px">Тест: залишилось <b class="cdn" data-end="${end}"></b> <button data-a="plus" data-id="${s.id}" data-v="1">+1 хв</button><button data-a="plus" data-id="${s.id}" data-v="5">+5 хв</button></div>`}
+function tickCd(){document.querySelectorAll('.cdn').forEach(e=>{const r=Math.max(0,Math.ceil((+e.dataset.end-Date.now())/1000));e.textContent=String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0')})}
+setInterval(tickCd,1000);
+document.addEventListener('input',e=>{if(e.target.id=='sq'){QRY=e.target.value;$('#tl').innerHTML=trows()}});
+document.addEventListener('keydown',e=>{if(e.key=='Escape'){if($('#RP'))$('#RP').remove();else if(PJ){PJ=null;drawPJ()}}});
+document.addEventListener('keydown',e=>{if((e.key=='Enter'||e.key==' ')&&e.target.matches&&e.target.matches('[role=button]')){e.preventDefault();e.target.click()}});
+teacher();
+</script>
+</body>
+</html>
