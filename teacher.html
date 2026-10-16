@@ -38,6 +38,13 @@ label{display:block;font-weight:600;font-size:.9rem;margin-bottom:10px}
 select,input[type=text],input[type=email],input[type=password],input[type=number],textarea{display:block;width:100%;margin-top:4px;padding:8px 10px;font:inherit;color:inherit;background:var(--bg);border:1px solid var(--line);border-radius:8px}
 button,.btn{font:inherit;font-weight:600;padding:8px 14px;border-radius:9px;border:1px solid var(--line);background:var(--card);color:var(--ink);cursor:pointer;margin:0 6px 6px 0;display:inline-block}
 button:hover{border-color:var(--g)}
+.acts{align-items:center}.ag{display:inline-flex;flex-wrap:wrap;margin:0 8px 0 4px;padding-left:10px;border-left:2px solid var(--line)}
+button.bl{background:color-mix(in srgb,var(--blue) 12%,var(--card));border-color:color-mix(in srgb,var(--blue) 35%,var(--card));color:var(--blue)}
+details.more{position:relative;display:inline-block;margin:0 6px 6px 0}details.more>summary{list-style:none;cursor:pointer;font-weight:600;padding:8px 14px;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+details.more>summary::-webkit-details-marker{display:none}details.more[open]>summary{border-color:var(--g)}
+.menu{position:absolute;right:0;top:calc(100% + 4px);z-index:20;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:6px;min-width:190px;box-shadow:0 8px 24px rgba(0,0,0,.18);display:flex;flex-direction:column}
+.menu button{margin:0 0 2px;text-align:left;border:0;background:none;width:100%}.menu button:hover{background:var(--g2)}
+.sw{display:flex;align-items:center;gap:8px}.sw>input{flex:none}
 button:focus-visible,input:focus-visible,textarea:focus-visible,select:focus-visible,summary:focus-visible,[role=button]:focus-visible{outline:3px solid var(--g);outline-offset:1px}
 .pri{background:var(--g);border-color:var(--g);color:#fff}.danger{color:var(--bad)}
 .err{color:var(--bad)}.mut{color:var(--mut)}.sm{font-size:.88rem}
@@ -149,7 +156,7 @@ async function api(path,{method='GET',body,prefer}={}){
   return d}
 const qStart=s=>{const d=s.tests?.data||{},sec=d.secs||0,st=s.started_at?+new Date(s.started_at):0;return s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+sec*1000):(s.status=='show'&&sec>0&&st?st+sec*1000:0)};
 const qEnd=s=>{const q=s.tests?.data?.qsecs||0,b=qStart(s);return b&&q?b+(q+(s.extra_secs||0))*1000:0};
-const VER='16.10.2026-в (дошка)';
+const VER='16.10.2026-г (меню)';
 const PL={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',late:'Завершено за часом',done:'Завершено'};
 const phase=s=>{if(s.status=='wait'||s.status=='done')return s.status;const b=qStart(s),e=qEnd(s),n=Date.now();if(s.status=='show'&&(!b||n<b))return'show';return e&&n>e?'late':'quiz'};
 const AE=new Set();function autoEnd(){S.forEach(s=>{const e=qEnd(s);if(e&&Date.now()>e+15000&&!AE.has(s.id)){AE.add(s.id);api('/rest/v1/sessions?id=eq.'+s.id,{method:'PATCH',body:{status:'done',ended_at:new Date(e).toISOString()}}).then(()=>load()).catch(()=>{})}})}
@@ -284,6 +291,7 @@ async function load(){
 function render(){
   if(E||!$('#M'))return;
   if(document.activeElement&&['sq','rq'].includes(document.activeElement.id))return;
+  if(document.querySelector('details.more[open]'))return;
   const cur=V=='detail'?PREV:V;
   document.querySelectorAll('.nv[data-v]').forEach(b=>b.classList.toggle('on',b.dataset.v==cur));
   $('#M').innerHTML=V=='tests'?testsV():V=='sessions'?sessionsV():V=='detail'?detail():V=='help'?helpV():home();
@@ -308,12 +316,13 @@ function home(){
    `<div class="stats">${st('doc',T.filter(t=>!t.data.archived).length,'Усього тестів','Переглянути всі','tests')}${st('users',act,'Учні в активних заняттях','Переглянути заняття','sessions')}${st('chart',avg,'Середня оцінка (з 12)','за всіма завершеними тестами')}${st('ok',fin,'Завершених занять','з усіх '+S.length)}</div>
    <div class="row"><h2 style="margin:0">Останні заняття</h2><button class="lnk" style="margin:0" data-a="nav" data-v="sessions">Усі заняття →</button></div>
    <div class="card" style="margin-top:8px">${S.filter(s=>!ASET().has(''+s.id)).slice(0,4).map(srow).join('')||empty}</div>`}
-const sessionsV=()=>{const A=ASET(),L=S.filter(s=>A.has(''+s.id)==SARCH);return hdr('Заняття','Усі запуски тестів. Оберіть заняття, щоб побачити результати.')+`<div class="row" style="margin-bottom:10px"><span></span><button data-a="archs">${SARCH?'← До активних занять':'Архів ('+S.filter(s=>A.has(''+s.id)).length+')'}</button></div><div class="card">${L.map(srow).join('')||(SARCH?'<p class="mut" style="padding:8px 4px">Архів порожній.</p>':empty)}</div>`};
-let RQ='',RPS=null,QRY='',TAGF='',ARCH=false,SARCH=false,SELA=new Set();const ASET=()=>{try{return new Set(JSON.parse(localStorage['arch-s']||'[]'))}catch{return new Set()}},ASAVE=s=>{try{localStorage['arch-s']=JSON.stringify([...s])}catch{}};
+const sessionsV=()=>{const A=ASET(),L=S.filter(s=>A.has(''+s.id)==SARCH);[...SSEL].forEach(k=>{if(!L.some(s=>''+s.id==k))SSEL.delete(k)});const n=SSEL.size;
+  return hdr('Заняття','Усі запуски тестів. Оберіть заняття, щоб побачити результати.')+`<div class="row" style="margin-bottom:10px"><span style="display:flex;align-items:center;flex-wrap:wrap;gap:6px"><label style="display:flex;gap:6px;align-items:center;margin-right:6px"><input type="checkbox" data-a="sselall" ${L.length&&L.every(s=>SSEL.has(''+s.id))?'checked':''} ${L.length?'':'disabled'}> Обрати всі</label>${n?`<span class="mut sm" style="margin-right:6px">Обрано: <b>${n}</b></span><button data-a="sbulkarch">${SARCH?'Відновити обрані':'В архів обрані'}</button><button class="danger" data-a="sbulkdel">Видалити обрані</button>`:''}</span><button data-a="archs">${SARCH?'← До активних занять':'Архів ('+S.filter(s=>A.has(''+s.id)).length+')'}</button></div><div class="card">${L.map(s=>`<div class="sw"><input type="checkbox" data-a="ssel" data-id="${s.id}" ${SSEL.has(''+s.id)?'checked':''} aria-label="Обрати заняття"><div style="flex:1;min-width:0">${srow(s)}</div></div>`).join('')||(SARCH?'<p class="mut" style="padding:8px 4px">Архів порожній.</p>':empty)}</div>`};
+let SSEL=new Set(),RQ='',RPS=null,QRY='',TAGF='',ARCH=false,SARCH=false,SELA=new Set();const ASET=()=>{try{return new Set(JSON.parse(localStorage['arch-s']||'[]'))}catch{return new Set()}},ASAVE=s=>{try{localStorage['arch-s']=JSON.stringify([...s])}catch{}};
 const tagBar=()=>{const all=[...new Set(T.flatMap(t=>t.data.tags||[]))].sort((a,b)=>a.localeCompare(b,'uk'));return all.length?`<div style="margin-bottom:10px">${['',...all].map(g=>`<button class="tc${TAGF==g?' on':''}" data-a="tag" data-v="${esc(g)}">${g?esc(g):'Усі'}</button>`).join('')}</div>`:''};
 const trows=()=>{const q=QRY.trim().toLowerCase(),L=T.filter(t=>(!q||t.title.toLowerCase().includes(q))&&(!TAGF||(t.data.tags||[]).includes(TAGF))&&!!t.data.archived==ARCH);
   return L.map(t=>{const d=t.data;return`<div class="trow"><span class="ico">${ic(d.type=='audio'?'audio':'doc')}</span><div><b>${esc(t.title)}</b><div class="mut sm">${d.noMat?'Без матеріалу':d.type=='audio'?'Аудіо':'Текст'}, ${d.qs.length} запитань</div>${(d.tags||[]).map(g=>`<span class="chip w" style="margin:4px 4px 0 0">${esc(g)}</span>`).join('')}</div>
-  <div class="acts"><button class="pri" data-a="fast" data-id="${t.id}">Швидкий урок</button><button data-a="new" data-id="${t.id}">Нове заняття</button><button data-a="printt" data-id="${t.id}">Для друку</button><button data-a="prevt" data-id="${t.id}">Переглянути</button><button data-a="board" data-id="${t.id}">На дошку</button><button data-a="edit" data-id="${t.id}">Редагувати</button><button data-a="dup" data-id="${t.id}">Дублювати</button><button data-a="exp" data-id="${t.id}">Зберегти у файл</button><button data-a="arch" data-id="${t.id}">${t.data.archived?'Відновити':'В архів'}</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></div></div>`}).join('')
+  <div class="acts"><button class="pri" data-a="new" data-id="${t.id}">Нове заняття</button><span class="ag"><button class="bl" data-a="board" data-id="${t.id}">На дошку</button><button class="bl" data-a="prevt" data-id="${t.id}">Переглянути</button><button class="bl" data-a="printt" data-id="${t.id}">Для друку</button></span><button data-a="edit" data-id="${t.id}">Редагувати</button><details class="more"><summary>Ще ▾</summary><div class="menu"><button data-a="dup" data-id="${t.id}">Дублювати</button><button data-a="exp" data-id="${t.id}">Зберегти у файл</button><button data-a="arch" data-id="${t.id}">${t.data.archived?'Відновити':'В архів'}</button><button class="danger" data-a="dt" data-id="${t.id}">Видалити</button></div></details></div></div>`}).join('')
   ||`<p class="mut" style="padding:8px 4px">${T.length?'Нічого не знайдено.':'Ще немає тестів. Створіть перший або імпортуйте файл.'}</p>`};
 const testsV=()=>hdr('Тести','Створюйте тести, редагуйте їх і зберігайте у файл.')+`<div class="row" style="margin-bottom:10px;flex-wrap:wrap;gap:8px"><span><button data-a="expall">Зберегти всі тести в один файл</button><button data-a="imp">Відновити з файлу</button></span><button data-a="archv">${ARCH?'← До активних тестів':'Архів ('+T.filter(t=>t.data.archived).length+')'}</button></div>${tagBar()}<input type="text" id="sq" placeholder="Пошук за назвою" value="${esc(QRY)}" style="margin:0 0 12px"><div class="card" id="tl">${trows()}</div>`;
 const helpV=()=>`<h1>Як користуватися</h1><p class="mut" style="margin:4px 0 14px">Короткий порядок дій для одного заняття.</p><div class="card"><ol class="how">
@@ -476,6 +485,12 @@ document.addEventListener('click',async e=>{
       await load();stReport(SEL,a0.id,true);toast('Оцінку оновлено');return}
     if(a=='board'){const t0=T.find(x=>x.id==id);let aud=null;if(t0.data.type=='audio'){const f=await api('/rest/v1/audio_files?test_id=eq.'+id+'&select=mime,data');if(f[0])aud=String(f[0].data).startsWith('data:')?f[0].data:'data:'+f[0].mime+';base64,'+f[0].data}openBoard(t0,aud);return}
     if(a=='bd'){bdAct(v);return}
+    if(a=='ssel'){const k=''+id;if(SSEL.has(k))SSEL.delete(k);else SSEL.add(k);render();return}
+    if(a=='sselall'){const A=ASET(),L=S.filter(s=>A.has(''+s.id)==SARCH).map(s=>''+s.id);if(L.every(k=>SSEL.has(k)))L.forEach(k=>SSEL.delete(k));else L.forEach(k=>SSEL.add(k));render();return}
+    if(a=='sbulkarch'){const A=ASET(),c=SSEL.size;SSEL.forEach(k=>{if(SARCH)A.delete(k);else A.add(k)});ASAVE(A);SSEL.clear();toast((SARCH?'Відновлено занять: ':'Перенесено в архів: ')+c);render();return}
+    if(a=='sbulkdel'){const ids=[...SSEL];if(!ids.length)return;
+      if(!confirm('Видалити назавжди заняття ('+ids.length+') разом з усіма результатами? Дію не можна скасувати. Якщо результати ще потрібні, спершу завантажте таблиці або скористайтеся «В архів».'))return;
+      await api('/rest/v1/sessions?id=in.('+ids.join(',')+')',{method:'DELETE'});const A=ASET();ids.forEach(k=>A.delete(k));ASAVE(A);SSEL.clear();toast('Видалено занять: '+ids.length);load();return}
     if(a=='archv'){ARCH=!ARCH;render();return}
     if(a=='archs'){SARCH=!SARCH;render();return}
     if(a=='arch'){const t=T.find(x=>x.id==id),d={...t.data};if(d.archived){delete d.archived}else d.archived=true;await api('/rest/v1/tests?id=eq.'+id,{method:'PATCH',body:{data:d}});toast(d.archived?'Тест перенесено в архів':'Тест відновлено');load();return}
@@ -596,6 +611,7 @@ function bdAct(v){const B=BD;if(!B)return;const n=(B.t.data.qs||[]).length;
   bdDraw()}
 setInterval(bdTick,500);
 document.addEventListener('keydown',e=>{if(!BD)return;if(e.key=='Escape')bdAct('close');else if(e.key=='ArrowRight'||(e.key==' '&&e.target.tagName!='BUTTON')){e.preventDefault();bdAct('next')}else if(e.key=='ArrowLeft')bdAct('prev')});
+document.addEventListener('click',e=>{document.querySelectorAll('details.more[open]').forEach(d=>{if(!d.contains(e.target)||!e.target.closest('summary'))d.open=false})},true);
 function report(s){RPS=null;
   const i=info(s),qs=i.qs,rows=i.A.slice().sort((a,b)=>a.name.localeCompare(b.name,'uk'));
   const mark=(a,k)=>{if(!a.finished_at)return'<td class="m sk">–</td>';const v=a.answers?.[k];if(v==null)return'<td class="m sk">–</td>';const pt=qpts(qs[k],v);return pt>=1?'<td class="m ok">✓</td>':pt>0?'<td class="m ok">±</td>':'<td class="m bad">✕</td>'};
