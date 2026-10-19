@@ -122,6 +122,7 @@ ol.how{padding-left:1.3em}ol.how li{margin:8px 0}
 .addrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center;padding:14px 16px;border:1.5px dashed color-mix(in srgb,var(--g) 40%,var(--line));border-radius:14px}.addrow b{margin-right:4px}
 .qcard{scroll-margin-top:16px;padding:20px 26px 24px}
 .qhead{display:flex;gap:14px;align-items:center;margin-bottom:18px}.qhd{flex:1;min-width:0}
+.mvg{display:inline-flex;gap:4px;flex:none}.ed .bt.mv{width:36px;height:36px;padding:0;justify-content:center;font-size:.8rem;line-height:1}
 .qgrid{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr)}
 .qleft{padding-right:28px}.qright{border-left:1px solid var(--line);padding-left:28px}
 .ans{display:flex;gap:10px;align-items:center;margin:0 0 8px}
@@ -130,7 +131,7 @@ ol.how{padding-left:1.3em}ol.how li{margin:8px 0}
 .ed .addbar{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin:0;padding:14px;border:1.5px dashed color-mix(in srgb,var(--g) 40%,var(--line));border-radius:14px;background:transparent;color:var(--g)}
 .ed .addbar:hover{background:var(--g2);border-color:var(--g)}.addbar svg{width:18px;height:18px}
 @media(max-width:820px){.ed h1{font-size:1.5rem}.ed-ico{width:46px;height:46px;box-shadow:none}.ed-ico svg{width:24px;height:24px}.qhd .sm{display:none}.ed .dq{padding:0;width:40px;height:40px;justify-content:center}.dq span{display:none}.qhead .bt span{display:inline}.qhead .dq span{display:none}.ed-grid,.qgrid,.ed-two{grid-template-columns:1fr}.qleft{padding-right:0}
- .qright{border-left:0;padding-left:0;border-top:1px solid var(--line);margin-top:8px;padding-top:16px}.ed-card,.qcard{padding:16px}.ed-acts{width:100%}.ed-acts .bt{flex:1;justify-content:center}}
+ .qright{border-left:0;padding-left:0;border-top:1px solid var(--line);margin-top:8px;padding-top:16px}.ed-card,.qcard{padding:16px}.ed-acts{width:100%}.ed-acts .bt{flex:1;justify-content:center}.qhead{flex-wrap:wrap;row-gap:10px}.qhd{flex:1 1 90px}}
 .lnkbox{display:flex;width:100%;gap:12px;justify-content:space-between;align-items:center;text-align:left;margin:6px 0 14px;padding:11px 14px;border-radius:12px;background:var(--g2);border:1px dashed color-mix(in srgb,var(--g) 40%,var(--line));color:var(--g);font-weight:600;word-break:break-all}
 .lnkbox:hover{border-style:solid;border-color:var(--g)}.lnkbox svg{flex:none}
 button.cpc{display:block;background:none;border:0;padding:2px 6px;margin:2px 0 0 -6px;border-radius:10px;color:inherit;text-align:left;cursor:pointer}button.cpc:hover{background:var(--g2);color:var(--g)}
@@ -186,7 +187,7 @@ const qEd=(x,i)=>{const t=x.type;let ans;
   else if(t=='match')ans=`<p class="mut sm" style="margin:0 0 10px">Ліворуч те, що бачить учень, праворуч правильна пара до нього.</p>${x.pairs.map((p,k)=>`<div class="ans"><input type="text" data-p="${i}:${k}:l" value="${esc(p.l)}" placeholder="Ліва частина" aria-label="Ліва частина ${k+1}"><span class="arr" aria-hidden="true">→</span><input type="text" data-p="${i}:${k}:r" value="${esc(p.r)}" placeholder="Права частина" aria-label="Права частина ${k+1}"><button class="bt ic dng" data-a="delp" data-i="${i}" data-k="${k}" ${x.pairs.length<=2?'disabled':''} aria-label="Видалити пару ${k+1}">${ic('x')}</button></div>`).join('')}<button class="bt ghost" data-a="addp" data-i="${i}">${ic('plus')}Додати пару</button>`;
   else ans=`<p class="mut sm" style="margin:0 0 10px">${t=='multi'?'Позначте всі правильні варіанти.':'Позначте правильний варіант.'} Порожні варіанти ігноруються.</p>${x.o.map((o,j)=>`<div class="ans"><input type="${t=='multi'?'checkbox':'radio'}" name="c${i}" data-c="${i}" value="${j}" ${(t=='multi'?x.c.includes(j):x.c==j)?'checked':''} aria-label="Правильна відповідь ${j+1}"><input type="text" data-o="${i}:${j}" value="${esc(o)}" placeholder="Варіант ${j+1}" aria-label="Варіант ${j+1}">${x.o.length>2?`<button class="bt ic dng" data-a="delo" data-i="${i}" data-k="${j}" aria-label="Видалити варіант ${j+1}">${ic('x')}</button>`:''}</div>`).join('')}<button class="bt ghost" data-a="addo" data-i="${i}" ${x.o.length>=8?'disabled':''}>${ic('plus')}Додати варіант</button>`;
   const extra=(t=='multi'||t=='match'?chk(`data-pa="${i}"`,x.partial,'Нараховувати частковий бал','За кількістю правильних і неправильних відповідей.'):'')+(t=='short'?chk(`data-cs="${i}"`,x.cs,'Враховувати великі й малі літери'):'');
-  return`<section class="ed-card qcard" id="q${i}" aria-label="Питання ${i+1}"><div class="qhead"><span class="ed-ico sm">${ic('help')}</span><div class="qhd"><b>Питання ${i+1}</b><div class="mut sm">Оберіть тип питання та додайте текст запитання.</div></div><button class="bt" data-a="dupq" data-i="${i}">${ic('copy')}<span>Копіювати</span></button><button class="bt dng dq" data-a="delq" data-i="${i}" aria-label="Видалити питання ${i+1}">${ic('trash')}<span>Видалити</span></button></div>
+  return`<section class="ed-card qcard" id="q${i}" aria-label="Питання ${i+1}"><div class="qhead"><span class="ed-ico sm">${ic('help')}</span><div class="qhd"><b>Питання ${i+1}</b><div class="mut sm">Оберіть тип питання та додайте текст запитання.</div></div><div class="mvg" role="group" aria-label="Змінити порядок питання ${i+1}"><button class="bt mv" data-a="mvq" data-i="${i}" data-v="-1" ${i==0?'disabled':''} title="Підняти вгору" aria-label="Перемістити питання ${i+1} вгору">▲</button><button class="bt mv" data-a="mvq" data-i="${i}" data-v="1" ${i>=E.qs.length-1?'disabled':''} title="Опустити вниз" aria-label="Перемістити питання ${i+1} вниз">▼</button></div><button class="bt" data-a="dupq" data-i="${i}">${ic('copy')}<span>Копіювати</span></button><button class="bt dng dq" data-a="delq" data-i="${i}" aria-label="Видалити питання ${i+1}">${ic('trash')}<span>Видалити</span></button></div>
   <div class="qgrid"><div class="qleft">
     <label class="fl">Тип питання${sel(`data-ty="${i}" aria-label="Тип питання ${i+1}"`,TYPES.map(([v,l])=>`<option value="${v}" ${t==v?'selected':''}>${l}</option>`).join(''))}</label>
     <label class="fl">Текст питання <span class="req" aria-hidden="true">*</span><textarea data-q="${i}" rows="2" placeholder="Введіть текст питання…">${esc(x.q)}</textarea></label><div style="margin:-4px 0 12px"><button data-a="img" data-i="${i}">🖼 Додати зображення</button><span class="mut sm">або вставте <code>![опис](https://посилання)</code></span></div>
@@ -517,6 +518,13 @@ document.addEventListener('click',async e=>{
     if(a=='addp'){E.qs[i].pairs.push({l:'',r:''});return draw()}
     if(a=='delp'){E.qs[i].pairs.splice(+k,1);return draw()}
     if(a=='addo'){if(E.qs[i].o.length<8)E.qs[i].o.push('');return draw()}
+    if(a=='mvq'){const j=+i+ +v;if(j<0||j>=E.qs.length)return;
+      if(E.id&&!E.mvOk&&S.some(x=>x.test_id==E.id&&(x.attempts||[]).length)){
+        if(!confirm('За цим тестом уже є результати учнів. Вони зберігаються за номерами питань, тому після зміни порядку (і після видалення питань) старі відповіді в таблицях і розборі можуть відображатися проти не тих питань. Усе одно змінити порядок?'))return
+        E.mvOk=true}
+      [E.qs[i],E.qs[j]]=[E.qs[j],E.qs[i]];E.dirty=true;draw();
+      const el=document.getElementById('q'+j);if(el){el.scrollIntoView({block:'center'});
+        const nb=el.querySelector(`[data-a="mvq"][data-v="${v}"]:not(:disabled)`)||el.querySelector('[data-a="mvq"]:not(:disabled)');if(nb)nb.focus({preventScroll:true})}return}
     if(a=='delq'){E.qs.splice(i,1);return draw()}
     if(a=='dupq'){E.qs.splice(+i+1,0,JSON.parse(JSON.stringify(E.qs[i])));draw();const el=document.getElementById('q'+(+i+1));if(el)el.scrollIntoView({block:'center'});return}
     if(a=='delo'){const q=E.qs[i],j=+k;q.o.splice(j,1);if(q.type=='multi')q.c=q.c.filter(z=>z!==j).map(z=>z>j?z-1:z);else q.c=q.c==j?-1:(q.c>j?q.c-1:q.c);return draw()}
