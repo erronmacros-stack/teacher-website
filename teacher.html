@@ -150,9 +150,12 @@ const URL_='https://nyilajegoqdhujnvhsoe.supabase.co',KEY_='sb_publishable_HgNdf
 const $=s=>document.querySelector(s),view=h=>$('#app').innerHTML=h;
 const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let TOK=(()=>{try{return sessionStorage.tk}catch{return null}})()||null,E=null,timer,T=[],S=[],V='home',PREV='home',SEL=null,TAB='res';const X=new Set();
+/* Поправка до годинника сервера (береться із заголовка Date відповіді; якщо його не видно, лишається 0). */
+let SKEW=0;const SNOW=()=>Date.now()+SKEW;
 async function api(path,{method='GET',body,prefer}={}){
   const h={apikey:KEY_,'Content-Type':'application/json'};if(TOK)h.Authorization='Bearer '+TOK;if(prefer)h.Prefer=prefer;
   const r=await fetch(URL_+path,{method,headers:h,body:body&&JSON.stringify(body)});
+  try{const ms=Date.parse(r.headers.get('date'));if(ms){const d=ms-Date.now();SKEW=Math.abs(d)>5000?d:0}}catch(x){}
   const t=await r.text();let d;try{d=JSON.parse(t)}catch{d=t}
   if(!r.ok){if(r.status==401&&TOK){delete sessionStorage.tk;TOK=null}throw new Error((d&&(d.message||d.msg||d.error_description))||r.status)}
   return d}
@@ -160,8 +163,8 @@ const qStart=s=>{const d=s.tests?.data||{},sec=d.secs||0,st=s.started_at?+new Da
 const qEnd=s=>{const q=s.tests?.data?.qsecs||0,b=qStart(s);return b&&q?b+(q+(s.extra_secs||0))*1000:0};
 const VER='16.10.2026-д (зображення)';
 const PL={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',late:'Завершено за часом',done:'Завершено'};
-const phase=s=>{if(s.status=='wait'||s.status=='done')return s.status;const b=qStart(s),e=qEnd(s),n=Date.now();if(s.status=='show'&&(!b||n<b))return'show';return e&&n>e?'late':'quiz'};
-const AE=new Set();function autoEnd(){S.forEach(s=>{const e=qEnd(s);if(e&&Date.now()>e+15000&&!AE.has(s.id)){AE.add(s.id);api('/rest/v1/sessions?id=eq.'+s.id,{method:'PATCH',body:{status:'done',ended_at:new Date(e).toISOString()}}).then(()=>load()).catch(()=>{})}})}
+const phase=s=>{if(s.status=='wait'||s.status=='done')return s.status;const b=qStart(s),e=qEnd(s),n=SNOW();if(s.status=='show'&&(!b||n<b))return'show';return e&&n>e?'late':'quiz'};
+const AE=new Set();function autoEnd(){S.forEach(s=>{const e=qEnd(s);if(e&&SNOW()>e+15000&&!AE.has(s.id)){AE.add(s.id);api('/rest/v1/sessions?id=eq.'+s.id,{method:'PATCH',body:{status:'done',ended_at:new Date(e).toISOString()}}).then(()=>load()).catch(()=>{})}})}
 const ST={wait:'Очікування',show:'Показ матеріалу',quiz:'Тест',done:'Завершено'};
 const defScale=()=>Array.from({length:12},(_,i)=>+(((i+.5)/12*100).toFixed(1)));
 const grade=(s,t,sc)=>{const p=s*100/t;if(!Array.isArray(sc))return Math.max(1,Math.round(p*12/100));let g=1;sc.forEach((m,i)=>{if(p>=m)g=i+1});return g};
@@ -477,7 +480,7 @@ document.addEventListener('click',async e=>{
       if(qs>0){const r=prompt('На скільки хвилин відкрити тест знову? Таймер піде від цього моменту. Також буде дозволено приєднання нових учнів.','5');if(r===null)return;mins=Math.round(+String(r).replace(',','.')||0);if(mins<1)return}
       else if(!confirm('Відкрити тест знову? Також буде дозволено приєднання нових учнів.'))return;
       const body={status:'quiz',ended_at:null,late_ok:true};
-      if(qs>0){const st=s0.started_at?+new Date(s0.started_at):0,qst=s0.quiz_at?+new Date(s0.quiz_at):st+(d.secs||0)*1000;if(!s0.quiz_at)body.quiz_at=new Date(qst).toISOString();body.extra_secs=Math.max(0,Math.round((Date.now()-qst)/1000+mins*60-qs))}
+      if(qs>0){const st=s0.started_at?+new Date(s0.started_at):0,qst=s0.quiz_at?+new Date(s0.quiz_at):st+(d.secs||0)*1000;if(!s0.quiz_at)body.quiz_at=new Date(qst).toISOString();body.extra_secs=Math.max(0,Math.round((SNOW()-qst)/1000+mins*60-qs))}
       await api('/rest/v1/sessions?id=eq.'+id,{method:'PATCH',body});AE.delete(s0.id);toast('Тест відкрито знову');load();return}
     if(a=='sr'){const s1=S.find(x=>x.id==SEL);await imgPrefetch(dataTexts(s1.tests?.data||{}));stReport(SEL,id);return}
     if(a=='ovr'){const s0=S.find(x=>x.id==SEL),a0=s0.attempts.find(x=>x.id==id),od=s0.tests.data,qi=+i,q=od.qs[qi],cur=a0.answers[qi],raw=cur&&cur.__ov!==undefined?cur.v:cur,
@@ -676,13 +679,13 @@ function drawPJ(){
     <p style="font-size:1.7rem;margin-top:24px">Приєдналися: <b>${i.A.length}</b>${i.D.length?`, здали: <b>${i.D.length}</b>`:''}</p></div>`}
 function tmr(s,i){
   const secs=i.d.secs||0,qs=i.d.qsecs||0,st=s.started_at?+new Date(s.started_at):0;
-  if(s.status=='show'&&st&&secs>0&&Date.now()<st+secs*1000)return`<div class="mut sm" style="margin-top:6px">Показ матеріалу: залишилось <b class="cdn" data-end="${st+secs*1000}"></b></div>`;
+  if(s.status=='show'&&st&&secs>0&&SNOW()<st+secs*1000)return`<div class="mut sm" style="margin-top:6px">Показ матеріалу: залишилось <b class="cdn" data-end="${st+secs*1000}"></b></div>`;
   const qst=s.status=='quiz'?(s.quiz_at?+new Date(s.quiz_at):st+secs*1000):(s.status=='show'&&secs>0&&st?st+secs*1000:0);
   if(!qs&&qst)return`<div class="mut sm" style="margin-top:6px;max-width:320px">Час на тест не задано, тому тест сам не завершиться. Натисніть «Завершити» або вкажіть «Час на тест, хв» у редакторі тесту.</div>`;
   if(!qs||!qst)return'';
-  const end=qst+(qs+(s.extra_secs||0))*1000;if(Date.now()>end)return'';
+  const end=qst+(qs+(s.extra_secs||0))*1000;if(SNOW()>end)return'';
   return`<div class="mut sm" style="margin-top:6px">Тест: залишилось <b class="cdn" data-end="${end}"></b> <button data-a="plus" data-id="${s.id}" data-v="1">+1 хв</button><button data-a="plus" data-id="${s.id}" data-v="5">+5 хв</button></div>`}
-function tickCd(){document.querySelectorAll('.cdn').forEach(e=>{const r=Math.max(0,Math.ceil((+e.dataset.end-Date.now())/1000));e.textContent=String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0')})}
+function tickCd(){document.querySelectorAll('.cdn').forEach(e=>{const r=Math.max(0,Math.ceil((+e.dataset.end-SNOW())/1000));e.textContent=String(r/60|0).padStart(2,'0')+':'+String(r%60).padStart(2,'0')})}
 setInterval(tickCd,1000);
 document.addEventListener('input',e=>{if(e.target.id=='sq'){QRY=e.target.value;$('#tl').innerHTML=trows()}});
 document.addEventListener('keydown',e=>{if(e.key=='Escape'){if($('#RP'))$('#RP').remove();else if(PJ){PJ=null;drawPJ()}}});

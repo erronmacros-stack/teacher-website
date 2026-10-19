@@ -133,6 +133,7 @@ let CT={};const IMC={};
 function hyd(){if(PREVIEW)return;document.querySelectorAll('img[data-ref]').forEach(async im=>{const id=im.dataset.ref;if(!IMC[id])IMC[id]=rpc('get_image',{p_code:CT.code,p_token:CT.tok,p_id:id}).catch(()=>null);const d=await IMC[id];if(d)im.src=d;else{IMC[id]=null;im.alt=im.alt||'Зображення недоступне'}})}
 const MSG={net:'Немає зв’язку з інтернетом. Ваші відповіді збережено на цьому пристрої: натисніть ще раз, щойно зв’язок з’явиться.',no_session:'Заняття з таким кодом не знайдено або воно вже завершене.',name_taken:'Це ім\'я вже використано в цьому занятті. Якщо це ви, зверніться до вчителя.',bad_name:'Введіть ім\'я (до 40 символів).',closed:'Час на відповіді закінчився.',already:'Ви вже надіслали відповіді.',no_plays:'Прослуховування вичерпано.',no_audio:'Аудіофайл не знайдено.',started:'Тест уже розпочався, приєднатися не можна. Зверніться до вчителя.'};
 const say=e=>MSG[e.message]||e.message;
+const nA=a=>{if(a==null)return null;if(Array.isArray(a))return a.some(v=>v!=null)?a:null;if(typeof a=='string')return a.trim().replace(/\s+/g,' ')||null;return a};
 
 const inl=t=>t.replace(/!\[([^\]]*)\]\((https?:\/\/[^\s)"<]+|img:[0-9a-f-]{36}|data:image\/[a-z+]+;base64,[A-Za-z0-9+\/=]+)\)/g,(m,a,u)=>u.startsWith('img:')?`<img class="qimg" alt="${a}" data-ref="${u.slice(4)}" src="data:image/gif;base64,R0lGODlhAQABAAAAACH5BAEKAAEALAAAAAABAAEAAAICTAEAOw==">`:`<img class="qimg" alt="${a}" src="${u}">`).replace(/\*\*(.+?)\*\*/g,'<b>$1</b>').replace(/(^|[^*])\*(?!\s)(.+?)\*(?!\*)/g,'$1<i>$2</i>');
 const mdi=t=>inl(esc(t)).replace(/\n/g,'<br>');
@@ -211,7 +212,10 @@ function student(){
 }
 function run(code,tok){CT={code,tok};
   let key='',active=true,dl=0,cd,poll,send=null,qsync=null;
-  const stop=()=>{active=false;clearInterval(poll);clearInterval(cd)};
+  let rec=false;
+  const bu=e=>{if(active&&!PREVIEW&&key=='quiz'){e.preventDefault();e.returnValue=''}};
+  addEventListener('beforeunload',bu);
+  const stop=()=>{active=false;clearInterval(poll);clearInterval(cd);removeEventListener('beforeunload',bu)};
   document.addEventListener('visibilitychange',()=>{if(active&&document.hidden&&['show','quiz'].includes(key))rpc('ping_leave',{p_token:tok}).catch(()=>{})});
   document.addEventListener('contextmenu',e=>{if(active)e.preventDefault()});
   function result(s){
@@ -266,7 +270,13 @@ function run(code,tok){CT={code,tok};
         cd=setInterval(()=>{const r=Math.max(0,Math.ceil((dl-Date.now())/1000));$('#cd').textContent='Залишилось '+r+' с';$('#tm').style.width=(tot?r/tot*100:0)+'%';if(!r){clearInterval(cd);tick()}},1000)}
       else $('#cd')&&0;
     }else if(key=='quiz'){clearInterval(cd);au&&au.pause();quiz(s)}
-    else if(key=='done'){if(send){const f=send;key='';await f(true);return}stop();view('<h1>Час вийшов</h1><div class="card"><p>Заняття завершено, відповіді вже не приймаються.</p></div>')}
+    else if(key=='done'){if(send){const f=send;key='';await f(true);return}
+      let sv0=null;try{sv0=JSON.parse(localStorage['ra-'+code+'-'+tok]||'null')}catch{}
+      if(sv0&&sv0.a&&!rec&&!PREVIEW){rec=true;
+        try{await rpc('submit',{p_code:code,p_token:tok,p_ans:Array.from({length:sv0.n},(_,i)=>nA(sv0.a[i]))});
+          try{localStorage.removeItem('ra-'+code+'-'+tok)}catch{}key='';rec=false;tick();return}
+        catch(e){if(e.message=='already'){key='';rec=false;return tick()}if(e.message=='net'){key='';rec=false;return}}}
+      stop();view('<h1>Час вийшов</h1><div class="card"><p>'+(sv0?'Час вийшов, а збережені відповіді надіслати не вдалося. Зверніться до вчителя.':'Заняття завершено, відповіді вже не приймаються.')+'</p></div>')}
   };
   const quiz=s=>{
     const rs=(a,k)=>PREVIEW?sh(a):shs(a,hs(code+'|'+tok+'|'+k)),
@@ -307,7 +317,7 @@ function run(code,tok){CT={code,tok};
         <div class="tip"><b>Порада</b><br>Уважно читайте запитання та всі варіанти відповідей.${timed?' Час на тест обмежений, слідкуйте за таймером.':''}</div>
         <button class="fin" style="width:100%;margin:0">Завершити тест</button>
       </aside></div>
-      <dialog id="dg"><p id="dm"></p><button id="no">Повернутися</button><button class="pri" id="yes">Так, завершити</button></dialog>`);
+      <dialog id="dg" aria-labelledby="dm"><p id="dm"></p><button id="no" autofocus>Повернутися</button><button class="pri" id="yes">Так, завершити</button></dialog>`);
       clock();sv();
       document.querySelectorAll('.qn').forEach(b=>b.onclick=()=>{k=+b.dataset.n;draw()});
       document.querySelectorAll('input[name=q]').forEach(i=>i.onchange=()=>{
@@ -321,7 +331,7 @@ function run(code,tok){CT={code,tok};
       $('#no').onclick=()=>$('#dg').close();$('#yes').onclick=()=>{$('#dg').close();send&&send()};
     };
     send=async force=>{
-      const ans=s.qs.map((_,i)=>{const a=A[i];if(a==null)return null;if(Array.isArray(a))return a.some(v=>v!=null)?a:null;if(typeof a=='string')return a.trim()||null;return a});
+      const ans=s.qs.map((_,i)=>nA(A[i]));
       try{await rpc('submit',{p_code:code,p_token:tok,p_ans:ans});send=null;try{localStorage.removeItem(AK)}catch{}key='';tick()}
       catch(e){if(e.message=='already'){send=null;key='';return tick()}
         if(force&&e.message!='net'){send=null;stop();view('<h1>Час вийшов</h1><div class="card"><p>Відповіді не встигли надіслатися.</p></div>')}
